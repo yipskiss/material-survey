@@ -113,6 +113,10 @@ body.big-dots .dot{width:58px;height:58px;font-size:16px}
 .btn.ghost[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:600}
 .toolrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.ordergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin-top:10px}
+.ocell{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px;display:flex;gap:7px;align-items:baseline;background:var(--surface)}
+.ocell.odone{opacity:.4}
+.onum{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;min-width:16px}
 </style>
 </head>
 <body>
@@ -283,7 +287,6 @@ function renderHome(){
     +'<p class="sub">재활용 플라스틱 20종 · 종이 20종 — 피험자를 선택하면 지정된 순서로 평가가 진행됩니다.</p>'
     +'<div class="stats"><span>완료 <b>'+doneN+'</b>명</span><span>진행 중 <b>'+partN+'</b>명</span><span>누적 응답 <b>'+totalCount()+'</b> / '+TOTAL+'</span></div>'
     +'<div class="pgrid">'+cells+'</div>'
-    +'<div class="foot"><button class="btn ghost" data-act="admin">기록 관리 · 내보내기</button></div>'
     +'</div>';
 }
 
@@ -313,10 +316,10 @@ function renderPrep(){
   app.innerHTML='<div class="wrap">'+bannerHTML()
     +'<div class="card center" style="margin-top:26px">'
     +'<p class="eyebrow">진행자 확인 · 시편 교체</p>'
-    +'<p class="trialnum" style="margin-top:10px">'+pid+' · 재료 '+(idx+1)+' / 40</p>'
-    +'<button class="codechip masked" data-act="reveal" id="codechip">코드 확인</button>'
-    +'<p class="codesub" id="codesub">참가자가 보지 않을 때 위 버튼을 눌러 시편 코드를 확인하세요.</p>'
-    +'<p class="hint" style="margin-top:14px">라이트 박스에 시편을 놓은 뒤, 참가자에게 화면을 보여 주세요.<br>평가 화면에는 시편 코드가 표시되지 않습니다.</p>'
+    +'<p class="trialnum" style="margin-top:10px">'+pid+'</p>'
+    +'<div class="codechip">'+(idx+1)+' <span style="font-size:20px;color:var(--muted)">/ 40</span></div>'
+    +'<p class="codesub">'+(idx+1)+'번째 시편을 라이트 박스에 놓아주세요.<br>어떤 시편인지는 [기록 관리 → 제시 순서표]에서 확인합니다.</p>'
+    +'<p class="hint" style="margin-top:14px">시편을 놓은 뒤, 참가자에게 화면을 보여 주세요.<br>평가 화면에는 시편 정보가 표시되지 않습니다.</p>'
     +'</div>'
     +'<div class="btnrow"><button class="btn wide" data-act="rate">평가 화면으로</button>'
     +'<button class="btn ghost wide" data-act="home">중단하고 나가기 (진행 상황 저장됨)</button></div>'
@@ -392,6 +395,11 @@ function renderAdmin(){
     +'<button class="btn ghost" data-act="retry">대기분 전송'+(queue.length?(' ('+queue.length+')'):'')+'</button>'
     +'<button class="btn ghost" data-act="csv">CSV (이 기기 기록)</button></div></div>'
     +'<div class="card tscroll" style="padding:6px 14px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="card" style="margin-top:16px"><p class="sectlab">제시 순서표 (진행자용)</p>'
+    +'<div class="toolrow" style="align-items:center"><select class="psel" id="orderpid">'
+    +PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')
+    +'</select><button class="btn ghost" data-act="showorder">순서 보기</button></div>'
+    +'<div id="orderbox"></div></div>'
     +'<div class="card" style="margin-top:16px"><p class="sectlab">화면 · 테스트 설정</p>'
     +'<div class="toolrow">'
     +'<button class="btn ghost" data-act="tg-test" aria-pressed="'+settings.test+'">테스트 모드 '+(settings.test?'켜짐':'꺼짐')+'</button>'
@@ -434,15 +442,15 @@ function blobSave(name,data,type){
   setTimeout(function(){URL.revokeObjectURL(url);},2000);
 }
 
-var armTimer=null,revealTimer=null;
-var MASK_MSG='참가자가 보지 않을 때 위 버튼을 눌러 시편 코드를 확인하세요.';
-function maskChip(chip,sub){chip.classList.add('masked');chip.textContent='코드 확인';sub.textContent=MASK_MSG;}
+var armTimer=null;
 
 app.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   var act=b.dataset.act;if(!act)return;
-  if(act==='home'){go({v:'home'});refresh();}
-  else if(act==='admin'){go({v:'admin'});refresh();}
+  if(act==='home'){
+    if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+    go({v:'home'});refresh();
+  }
   else if(act==='pick'){
     var pid=b.dataset.pid;
     if(countOf(pid)>=40){go({v:'done',pid:pid});}
@@ -450,14 +458,12 @@ app.addEventListener('click',function(e){
   }
   else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
-  else if(act==='reveal'){
-    var chip=document.getElementById('codechip'),sub=document.getElementById('codesub');
-    var mm=ORDERS[route.pid][route.idx];
-    clearTimeout(revealTimer);
-    if(chip.classList.contains('masked')){
-      chip.classList.remove('masked');chip.textContent=mm;sub.textContent=matName(mm);
-      revealTimer=setTimeout(function(){if(document.getElementById('codechip')===chip)maskChip(chip,sub);},4000);
-    }else{maskChip(chip,sub);}
+  else if(act==='showorder'){
+    var op=document.getElementById('orderpid').value;
+    var os=answeredSet(op),oh='<div class="ordergrid">';
+    ORDERS[op].forEach(function(m,i){oh+='<div class="ocell'+(os[i]?' odone':'')+'"><span class="onum">'+(i+1)+'</span><span class="mono">'+m+'</span></div>';});
+    oh+='</div>';
+    document.getElementById('orderbox').innerHTML='<p class="hint">'+op+' 제시 순서 — 흐린 항목은 이미 응답이 저장된 재료입니다.</p>'+oh;
   }
   else if(act==='dot'){
     var i=+b.dataset.item,val=+b.dataset.val;
@@ -545,7 +551,14 @@ document.addEventListener('keydown',function(e){
   }
 });
 
+window.addEventListener('hashchange',function(){
+  if(location.hash==='#admin'){go({v:'admin'});refresh();}
+  else if(route.v==='admin'){go({v:'home'});}
+});
+
 applySettings();
+if(location.hash==='#admin')route={v:'admin'};
+else if(route.v==='admin')route={v:'home'};
 sanitizeRoute();
 render();
 refresh().then(function(){sanitizeRoute();render();if(queue.length)flush();});
