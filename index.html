@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>재질 시각 평가</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<style id="css">
+:root{
+  --ground:#F2F2F1; --surface:#FFFFFF; --ink:#191A1B; --muted:#6E7176;
+  --line:#DEDFE0; --soft:#ECEDED; --accent:#33474F; --accent-on:#FFFFFF;
+  --ok:#2C7A57; --ok-soft:#E3EFE9; --warn-bg:#F5EEDC; --warn-ink:#6C5619;
+  --danger:#9E3B2F; --shadow:0 1px 3px rgba(20,22,23,.07),0 8px 24px rgba(20,22,23,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#131415; --surface:#1C1E20; --ink:#EBECEC; --muted:#979A9F;
+    --line:#2D3033; --soft:#24272A; --accent:#AFC3CB; --accent-on:#16272D;
+    --ok:#62BD93; --ok-soft:#1E2E27; --warn-bg:#312D1D; --warn-ink:#D8C070;
+    --danger:#D4796C; --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#131415; --surface:#1C1E20; --ink:#EBECEC; --muted:#979A9F;
+  --line:#2D3033; --soft:#24272A; --accent:#AFC3CB; --accent-on:#16272D;
+  --ok:#62BD93; --ok-soft:#1E2E27; --warn-bg:#312D1D; --warn-ink:#D8C070;
+  --danger:#D4796C; --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  font-size:16px; line-height:1.55; min-height:100vh;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.wrap{max-width:660px;margin:0 auto;padding:24px 18px 64px}
+.wrap.wide{max-width:960px}
+.eyebrow{font-size:12px;font-weight:500;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+h1{font-size:26px;font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin-top:6px}
+.sub{color:var(--muted);margin-top:8px;font-size:14.5px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.banner{border-radius:10px;padding:10px 14px;font-size:13.5px;background:var(--warn-bg);color:var(--warn-ink);margin-bottom:16px}
+.banner.okb{background:var(--ok-soft);color:var(--ok)}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin:18px 0 10px;font-size:13.5px;color:var(--muted)}
+.stats b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:14px}
+.pbtn{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 8px 10px;text-align:center;transition:border-color .12s}
+.pbtn:hover{border-color:var(--accent)}
+.pbtn .pid{font-weight:600;font-size:15px}
+.pbtn .st{display:block;font-size:11.5px;margin-top:3px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pbtn.part .st{color:var(--accent);font-weight:500}
+.pbtn.done{background:var(--ok-soft);border-color:transparent}
+.pbtn.done .st{color:var(--ok);font-weight:500}
+.foot{margin-top:26px;display:flex;justify-content:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:13px 22px;font-size:15.5px;font-weight:500;background:var(--accent);color:var(--accent-on);min-height:48px;text-decoration:none}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.45;cursor:default}
+.btnrow{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+.center{text-align:center}
+.trialnum{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.codechip{display:inline-block;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:40px;letter-spacing:.02em;background:var(--soft);border-radius:14px;padding:14px 30px;margin:14px 0 6px}
+.codesub{color:var(--muted);font-size:14.5px}
+button.codechip{cursor:pointer}
+.codechip.masked{font-size:17px;font-weight:500;font-family:inherit;color:var(--muted);background:none;border:1.5px dashed var(--line);padding:22px 34px}
+.guide{list-style:none;margin-top:12px;display:grid;gap:10px}
+.guide li{padding-left:20px;position:relative;font-size:14.5px}
+.guide li::before{content:"";position:absolute;left:2px;top:9px;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.topbar{position:sticky;top:0;z-index:5;background:var(--ground);padding:12px 0 10px;margin-bottom:6px}
+.topline{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--muted)}
+.topline b{color:var(--ink);font-variant-numeric:tabular-nums}
+.bar{height:4px;border-radius:2px;background:var(--soft);margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .2s}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}.btn:active{transform:none}}
+.hint{font-size:13.5px;color:var(--muted);margin:10px 0 4px}
+.sect{margin-top:20px}
+.sectlab{font-size:12px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;margin-bottom:10px}
+.item.miss{border-color:var(--danger)}
+.poles{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;font-weight:500}
+.poles .r{text-align:right}
+.dots{display:flex;justify-content:space-between;margin-top:12px;padding:0 2px}
+.dot{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s}
+.dot:hover{border-color:var(--accent)}
+.dot[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-on);font-weight:600}
+.missnote{color:var(--danger);font-size:13.5px;margin:4px 0 10px;display:none}
+.missnote.show{display:block}
+.donemark{width:64px;height:64px;border-radius:50%;background:var(--ok-soft);color:var(--ok);font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.tscroll{overflow-x:auto}
+.tag{display:inline-block;font-size:12px;border-radius:999px;padding:2px 10px;background:var(--soft);color:var(--muted)}
+.tag.done{background:var(--ok-soft);color:var(--ok)}
+.tag.part{background:var(--soft);color:var(--accent);font-weight:500}
+.del{color:var(--danger);font-size:13px;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.del.arm{background:var(--danger);border-color:var(--danger);color:#fff}
+.admhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 14px}
+.note{font-size:13px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:16px}
+.note b{color:var(--ink)}
+.backlink{font-size:14px;color:var(--muted);display:inline-block;margin-bottom:12px}
+.modal{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 30%,transparent);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+.modal .box{background:var(--surface);border-radius:14px;padding:20px;max-width:640px;width:100%;box-shadow:var(--shadow)}
+.modal textarea{width:100%;height:240px;margin:12px 0;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script id="appjs">
+(function(){
+'use strict';
+// ─── 설정 ───────────────────────────────────────────────
+// Apps Script 배포 후 받은 웹 앱 URL(…/exec)을 아래에 넣으세요.
+var ENDPOINT='';
+// apps-script.gs의 API_KEY와 동일해야 합니다.
+var APIKEY='hxlab-material-2026';
+// (선택) 구글 시트 문서 URL — 넣으면 관리 화면에 [구글 시트 열기] 버튼이 생깁니다.
+var SHEET_URL='';
+// ────────────────────────────────────────────────────────
+
+var ORDERS={"P01":["PL_3","P_1","PL_12","P_8","PL_5","P_19","P_3","PL_18","P_11","PL_1","PL_9","P_14","PL_20","P_6","PL_2","P_17","PL_15","P_2","PL_8","P_5","P_10","PL_11","P_15","PL_4","P_7","PL_19","P_20","PL_14","P_9","PL_6","P_13","PL_7","P_4","PL_17","P_18","PL_13","P_12","PL_10","P_16","PL_16"],"P02":["P_5","PL_14","P_18","PL_2","P_1","PL_8","P_12","PL_19","P_9","P_20","PL_6","P_15","PL_1","P_3","PL_10","P_7","PL_17","P_11","PL_3","P_2","PL_15","P_16","PL_12","P_4","PL_5","P_13","PL_20","P_8","PL_7","P_19","PL_11","P_10","PL_16","P_17","PL_9","P_14","PL_18","P_6","PL_4","PL_13"],"P03":["PL_8","P_9","PL_1","P_15","PL_20","P_2","P_11","PL_6","P_4","PL_13","P_18","PL_5","P_7","PL_12","P_13","PL_17","P_1","PL_10","P_19","PL_2","P_10","PL_16","P_6","PL_9","P_14","PL_4","P_12","PL_15","P_3","PL_18","P_20","PL_19","P_8","PL_3","P_16","PL_7","P_5","PL_14","P_17","PL_11"],"P04":["P_12","PL_4","P_6","PL_16","P_19","PL_11","P_2","PL_7","P_14","PL_1","P_20","PL_9","P_3","PL_18","P_10","PL_5","P_15","PL_13","P_8","PL_10","P_1","PL_2","P_17","PL_20","P_9","PL_12","P_13","PL_15","P_5","PL_3","P_18","PL_17","P_7","PL_6","P_11","PL_14","P_4","PL_8","P_16","PL_19"],"P05":["PL_17","P_7","PL_3","P_13","PL_10","P_4","P_18","PL_15","P_1","PL_8","P_16","PL_20","P_9","PL_5","P_11","PL_12","P_15","PL_2","P_8","PL_14","P_20","PL_6","P_10","PL_1","P_2","PL_18","P_19","PL_9","P_5","PL_7","P_14","PL_13","P_12","PL_19","P_6","PL_16","P_3","PL_11","P_17","PL_4"],"P06":["P_3","PL_9","P_11","PL_2","P_8","PL_14","P_16","PL_6","P_1","PL_18","P_17","PL_12","P_5","PL_4","P_19","PL_20","P_2","PL_7","P_13","PL_1","P_20","PL_10","P_10","PL_15","P_7","PL_5","P_12","PL_13","P_9","PL_17","P_4","PL_3","P_15","PL_8","P_14","PL_19","P_6","PL_11","P_18","PL_16"],"P07":["PL_11","P_2","PL_19","P_14","PL_4","P_9","PL_7","P_18","PL_13","P_5","PL_1","P_10","PL_16","P_3","PL_8","P_12","PL_20","P_20","PL_10","P_7","PL_15","P_15","PL_5","P_1","PL_3","P_17","PL_9","P_6","PL_2","P_13","PL_18","P_19","PL_12","P_8","PL_17","P_11","PL_14","P_16","PL_6","P_4"],"P08":["P_20","PL_5","P_4","PL_17","P_10","PL_2","P_15","PL_11","P_1","PL_9","P_13","PL_18","P_7","PL_6","P_18","PL_12","P_3","PL_20","P_12","PL_8","P_8","PL_14","P_16","PL_1","P_19","PL_15","P_2","PL_3","P_9","PL_10","P_14","PL_13","P_11","PL_7","P_6","PL_4","P_17","PL_19","P_5","PL_16"],"P09":["PL_2","P_16","PL_15","P_6","PL_8","P_12","PL_10","P_3","PL_4","P_19","PL_18","P_1","PL_14","P_7","PL_1","P_10","PL_20","P_17","PL_12","P_11","PL_6","P_8","PL_13","P_2","PL_5","P_14","PL_11","P_5","PL_9","P_18","PL_7","P_9","PL_19","P_13","PL_16","P_15","PL_3","P_4","PL_17","P_20"],"P10":["P_8","PL_1","P_2","PL_20","P_17","PL_7","P_13","PL_16","P_6","PL_11","P_9","PL_3","P_15","PL_19","P_4","PL_12","P_1","PL_5","P_10","PL_8","P_14","PL_2","P_19","PL_17","P_5","PL_10","P_3","PL_9","P_11","PL_15","P_18","PL_4","P_12","PL_14","P_16","PL_6","P_20","PL_13","P_7","PL_18"],"P11":["PL_6","P_10","PL_13","P_5","PL_18","P_16","PL_2","P_1","PL_9","P_12","PL_15","P_7","PL_4","P_3","PL_20","P_8","PL_7","P_14","PL_11","P_19","PL_17","P_2","PL_1","P_9","PL_8","P_13","PL_14","P_20","PL_3","P_4","PL_10","P_18","PL_16","P_11","PL_5","P_15","PL_12","P_6","PL_19","P_17"],"P12":["P_14","PL_7","P_3","PL_12","P_9","PL_15","P_6","PL_18","P_17","PL_3","P_11","PL_1","P_1","PL_16","P_20","PL_10","P_5","PL_4","P_8","PL_20","P_13","PL_8","P_2","PL_19","P_10","PL_5","P_18","PL_2","P_16","PL_13","P_12","PL_11","P_15","PL_9","P_4","PL_17","P_7","PL_14","P_19","PL_6"],"P13":["PL_19","P_4","PL_10","P_18","PL_3","P_7","PL_8","P_15","PL_2","P_1","PL_14","P_10","PL_17","P_6","PL_5","P_9","PL_12","P_13","PL_16","P_2","PL_20","P_11","PL_1","P_19","PL_11","P_5","PL_9","P_16","PL_7","P_12","PL_18","P_3","PL_4","P_17","PL_13","P_8","PL_6","P_14","PL_15","P_20"],"P14":["P_9","PL_2","P_15","PL_14","P_1","PL_6","P_12","PL_17","P_8","PL_3","P_3","PL_11","P_17","PL_19","P_10","PL_5","P_16","PL_18","P_4","PL_13","P_19","PL_9","P_7","PL_1","P_11","PL_10","P_2","PL_20","P_13","PL_4","P_20","PL_12","P_5","PL_16","P_18","PL_8","P_6","PL_7","P_14","PL_15"],"P15":["PL_4","P_11","PL_16","P_2","PL_9","P_20","PL_12","P_5","PL_17","P_14","PL_3","P_8","PL_1","P_10","PL_15","P_6","PL_7","P_13","PL_19","P_1","PL_11","P_17","PL_5","P_9","PL_8","P_15","PL_13","P_3","PL_18","P_12","PL_2","P_18","PL_10","P_4","PL_14","P_19","PL_20","P_7","PL_6","P_16"],"P16":["P_7","PL_18","P_1","PL_10","P_13","PL_13","P_17","PL_1","P_4","PL_8","P_9","PL_6","P_2","PL_15","P_12","PL_2","P_16","PL_19","P_20","PL_11","P_11","PL_16","P_5","PL_7","P_18","PL_12","P_6","PL_4","P_10","PL_17","P_14","PL_3","P_8","PL_9","P_3","PL_14","P_15","PL_5","P_19","PL_20"],"P17":["PL_12","P_5","PL_4","P_19","PL_1","P_8","PL_14","P_2","PL_18","P_11","PL_10","P_6","PL_7","P_16","PL_15","P_15","PL_2","P_3","PL_20","P_12","PL_9","P_10","PL_16","P_1","PL_11","P_18","PL_3","P_13","PL_17","P_9","PL_6","P_7","PL_8","P_14","PL_5","P_17","PL_13","P_4","PL_19","P_20"],"P18":["P_16","PL_3","P_8","PL_9","P_4","PL_15","P_10","PL_12","P_13","PL_2","P_1","PL_11","P_6","PL_20","P_17","PL_7","P_19","PL_5","P_11","PL_18","P_9","PL_1","P_2","PL_17","P_20","PL_14","P_7","PL_8","P_15","PL_4","P_3","PL_10","P_14","PL_6","P_12","PL_13","P_5","PL_16","P_18","PL_19"],"P19":["PL_15","P_2","PL_6","P_12","PL_11","P_17","PL_19","P_14","PL_3","P_7","PL_16","P_5","PL_8","P_9","PL_10","P_18","PL_4","P_1","PL_13","P_3","PL_20","P_10","PL_18","P_11","PL_12","P_15","PL_1","P_6","PL_5","P_20","PL_9","P_13","PL_14","P_8","PL_7","P_4","PL_2","P_16","PL_17","P_19"],"P20":["P_6","PL_10","P_20","PL_8","P_15","PL_17","P_3","PL_1","P_9","PL_14","P_11","PL_5","P_1","PL_3","P_7","PL_12","P_13","PL_9","P_2","PL_6","P_16","PL_15","P_12","PL_2","P_8","PL_18","P_19","PL_11","P_4","PL_16","P_17","PL_13","P_10","PL_4","P_5","PL_19","P_18","PL_7","P_14","PL_20"],"P21":["PL_1","P_9","PL_18","P_14","PL_5","P_2","PL_13","P_16","PL_7","P_11","PL_4","P_19","PL_11","P_6","PL_16","P_8","PL_10","P_3","PL_19","P_1","PL_2","P_15","PL_9","P_5","PL_15","P_10","PL_3","P_17","PL_6","P_12","PL_12","P_4","PL_14","P_18","PL_8","P_7","PL_20","P_13","PL_17","P_20"],"P22":["P_11","PL_7","P_4","PL_14","P_18","PL_12","P_8","PL_3","P_13","PL_20","P_17","PL_9","P_15","PL_6","P_2","PL_11","P_9","PL_1","P_10","PL_15","P_16","PL_8","P_1","PL_4","P_12","PL_18","P_6","PL_10","P_19","PL_16","P_5","PL_2","P_7","PL_13","P_3","PL_17","P_20","PL_19","P_14","PL_5"],"P23":["PL_13","P_17","PL_16","P_1","PL_3","P_10","PL_10","P_5","PL_9","P_8","PL_6","P_3","PL_1","P_12","PL_5","P_18","PL_14","P_7","PL_2","P_14","PL_18","P_19","PL_11","P_6","PL_12","P_15","PL_8","P_16","PL_15","P_2","PL_20","P_9","PL_4","P_20","PL_7","P_11","PL_17","P_13","PL_19","P_4"],"P24":["P_13","PL_8","P_7","PL_15","P_2","PL_1","P_11","PL_19","P_4","PL_12","P_16","PL_3","P_17","PL_6","P_10","PL_17","P_9","PL_4","P_3","PL_10","P_1","PL_5","P_18","PL_14","P_12","PL_9","P_5","PL_16","P_8","PL_20","P_14","PL_2","P_20","PL_18","P_15","PL_13","P_19","PL_11","P_6","PL_7"],"P25":["PL_5","P_3","PL_2","P_19","PL_17","P_8","PL_8","P_1","PL_12","P_15","PL_16","P_10","PL_14","P_7","PL_7","P_14","PL_9","P_4","PL_1","P_11","PL_13","P_6","PL_6","P_17","PL_11","P_2","PL_18","P_16","PL_3","P_20","PL_20","P_12","PL_4","P_9","PL_15","P_13","PL_10","P_5","PL_19","P_18"],"P26":["P_15","PL_11","P_5","PL_6","P_9","PL_9","P_16","PL_4","P_2","PL_18","P_14","PL_1","P_8","PL_13","P_20","PL_5","P_4","PL_15","P_12","PL_3","P_1","PL_12","P_11","PL_20","P_17","PL_7","P_3","PL_17","P_19","PL_10","P_13","PL_8","P_10","PL_16","P_6","PL_2","P_7","PL_14","P_18","PL_19"],"P27":["PL_16","P_18","PL_5","P_12","PL_7","P_6","PL_11","P_3","PL_13","P_15","PL_19","P_10","PL_2","P_1","PL_15","P_8","PL_20","P_4","PL_8","P_2","PL_10","P_17","PL_1","P_9","PL_14","P_19","PL_9","P_13","PL_3","P_7","PL_4","P_16","PL_12","P_11","PL_18","P_5","PL_6","P_14","PL_17","P_20"],"P28":["P_2","PL_20","P_10","PL_3","P_17","PL_10","P_5","PL_16","P_8","PL_14","P_1","PL_12","P_18","PL_7","P_4","PL_17","P_11","PL_2","P_15","PL_8","P_12","PL_5","P_19","PL_6","P_13","PL_9","P_6","PL_15","P_16","PL_1","P_9","PL_13","P_3","PL_11","P_20","PL_4","P_14","PL_19","P_7","PL_18"],"P29":["PL_9","P_13","PL_4","P_7","PL_15","P_16","PL_12","P_20","PL_8","P_2","PL_1","P_10","PL_6","P_18","PL_19","P_11","PL_3","P_14","PL_5","P_5","PL_17","P_15","PL_2","P_8","PL_10","P_12","PL_20","P_1","PL_14","P_4","PL_16","P_3","PL_18","P_9","PL_7","P_17","PL_11","P_6","PL_13","P_19"],"P30":["P_4","PL_14","P_19","PL_9","P_3","PL_2","P_7","PL_11","P_12","PL_5","P_13","PL_17","P_10","PL_4","P_1","PL_20","P_18","PL_8","P_16","PL_13","P_6","PL_3","P_8","PL_1","P_15","PL_7","P_20","PL_18","P_5","PL_15","P_17","PL_12","P_2","PL_6","P_9","PL_10","P_11","PL_16","P_14","PL_19"],"P31":["PL_7","P_1","PL_3","P_8","PL_12","P_15","PL_9","P_5","PL_2","P_17","PL_14","P_3","PL_5","P_11","PL_8","P_9","PL_1","P_6","PL_19","P_13","PL_16","P_2","PL_4","P_14","PL_13","P_10","PL_10","P_16","PL_6","P_19","PL_15","P_12","PL_18","P_20","PL_17","P_4","PL_11","P_18","PL_20","P_7"],"P32":["P_1","PL_13","P_6","PL_18","P_14","PL_8","P_9","PL_2","P_16","PL_15","P_5","PL_10","P_19","PL_11","P_2","PL_17","P_12","PL_4","P_7","PL_20","P_18","PL_12","P_13","PL_6","P_3","PL_9","P_10","PL_1","P_8","PL_5","P_11","PL_16","P_15","PL_3","P_4","PL_14","P_17","PL_7","P_20","PL_19"],"P33":["PL_10","P_15","PL_1","P_11","PL_7","P_4","PL_16","P_9","PL_14","P_20","PL_3","P_2","PL_9","P_12","PL_18","P_6","PL_2","P_5","PL_5","P_16","PL_12","P_1","PL_13","P_8","PL_4","P_17","PL_19","P_13","PL_8","P_10","PL_6","P_14","PL_15","P_3","PL_17","P_19","PL_11","P_7","PL_20","P_18"],"P34":["P_17","PL_6","P_2","PL_15","P_8","PL_10","P_18","PL_1","P_4","PL_17","P_5","PL_12","P_16","PL_19","P_9","PL_4","P_11","PL_8","P_14","PL_3","P_1","PL_7","P_13","PL_5","P_3","PL_14","P_6","PL_20","P_12","PL_9","P_10","PL_13","P_7","PL_2","P_15","PL_11","P_20","PL_16","P_19","PL_18"],"P35":["PL_2","P_8","PL_19","P_3","PL_4","P_13","PL_13","P_1","PL_11","P_7","PL_6","P_16","PL_15","P_12","PL_8","P_20","PL_5","P_10","PL_1","P_5","PL_17","P_19","PL_10","P_4","PL_9","P_15","PL_7","P_2","PL_14","P_11","PL_3","P_18","PL_20","P_6","PL_12","P_9","PL_16","P_14","PL_18","P_17"],"P36":["P_10","PL_17","P_12","PL_5","P_6","PL_3","P_15","PL_8","P_1","PL_12","P_17","PL_7","P_2","PL_16","P_9","PL_9","P_4","PL_2","P_8","PL_19","P_14","PL_10","P_3","PL_13","P_11","PL_15","P_7","PL_4","P_20","PL_1","P_13","PL_6","P_5","PL_20","P_18","PL_14","P_19","PL_11","P_16","PL_18"],"P37":["PL_18","P_6","PL_11","P_16","PL_9","P_2","PL_2","P_10","PL_15","P_13","PL_4","P_8","PL_17","P_1","PL_13","P_19","PL_7","P_15","PL_1","P_5","PL_8","P_7","PL_12","P_12","PL_5","P_3","PL_14","P_18","PL_3","P_11","PL_20","P_9","PL_10","P_14","PL_6","P_4","PL_19","P_17","PL_16","P_20"],"P38":["P_19","PL_4","P_5","PL_9","P_7","PL_1","P_11","PL_14","P_13","PL_6","P_2","PL_16","P_18","PL_10","P_9","PL_18","P_12","PL_3","P_1","PL_15","P_4","PL_20","P_16","PL_7","P_15","PL_2","P_10","PL_8","P_3","PL_12","P_6","PL_5","P_8","PL_19","P_17","PL_13","P_14","PL_11","P_20","PL_17"],"P39":["PL_14","P_16","PL_7","P_4","PL_20","P_9","PL_3","P_2","PL_17","P_18","PL_8","P_12","PL_1","P_8","PL_10","P_1","PL_5","P_15","PL_12","P_10","PL_15","P_11","PL_9","P_5","PL_19","P_13","PL_2","P_6","PL_16","P_7","PL_11","P_3","PL_6","P_17","PL_18","P_14","PL_4","P_19","PL_13","P_20"],"P40":["P_3","PL_8","P_14","PL_12","P_10","PL_4","P_1","PL_19","P_16","PL_15","P_6","PL_9","P_5","PL_2","P_11","PL_7","P_19","PL_3","P_8","PL_18","P_12","PL_1","P_2","PL_10","P_18","PL_16","P_4","PL_17","P_9","PL_5","P_15","PL_11","P_13","PL_14","P_7","PL_6","P_17","PL_13","P_20","PL_20"]};
+var ITEMS=[
+ {s:'A',l:'플라스틱 같다',r:'종이 같다'},
+ {s:'A',l:'인공적이다',r:'자연스럽다'},
+ {s:'B',l:'거칠다',r:'매끄럽다'},
+ {s:'B',l:'무광이다',r:'유광이다'},
+ {s:'B',l:'차갑다',r:'따뜻하다'},
+ {s:'B',l:'불투명하다',r:'투명하다'},
+ {s:'B',l:'무채색이다',r:'다채롭다'},
+ {s:'B',l:'색이 약하다',r:'색이 강하다'},
+ {s:'C',l:'선호하지 않는다',r:'선호한다'}
+];
+var SECTIONS={A:'A · 소재 정체성',B:'B · 시각적 속성',C:'C · 선호'};
+var PIDS=Object.keys(ORDERS);
+var TOTAL=PIDS.length*40;
+var LS_REC='mtgh_records_v1', LS_Q='mtgh_queue_v1', SS_ROUTE='mtgh_route_v1', LS_DEV='mtgh_dev_v1';
+
+// ─── 상태 ───
+var records={};   // 이 기기에서 기록한 응답 {pid:{idx:{m,r,t}}}
+var queue=[];     // 서버 전송 대기 중인 레코드
+var serverAnswered={}; // 서버에 저장된 것으로 확인된 {pid:{idx:true}}
+var serverOk=null; // null=조회 전, true/false=조회 결과
+var deviceId='';
+
+try{records=JSON.parse(localStorage.getItem(LS_REC)||'{}')||{};}catch(e){records={};}
+try{queue=JSON.parse(localStorage.getItem(LS_Q)||'[]')||[];}catch(e){queue=[];}
+try{
+  deviceId=localStorage.getItem(LS_DEV)||'';
+  if(!deviceId){deviceId='dev-'+Math.random().toString(36).slice(2,8);localStorage.setItem(LS_DEV,deviceId);}
+}catch(e){deviceId='dev-x';}
+
+function saveRecords(){try{localStorage.setItem(LS_REC,JSON.stringify(records));}catch(e){}}
+function saveQueue(){try{localStorage.setItem(LS_Q,JSON.stringify(queue));}catch(e){}}
+
+function answeredSet(pid){
+  var s={},k;
+  var sv=serverAnswered[pid]||{};for(k in sv)s[k]=true;
+  var lc=records[pid]||{};for(k in lc)s[k]=true;
+  return s;
+}
+function countOf(pid){return Object.keys(answeredSet(pid)).length;}
+function nextIdx(pid){var s=answeredSet(pid);for(var i=0;i<40;i++){if(!s[i])return i;}return 40;}
+function totalCount(){var n=0;for(var i=0;i<PIDS.length;i++)n+=countOf(PIDS[i]);return n;}
+function matName(m){return m.indexOf('PL_')===0?('재활용 플라스틱 '+m.slice(3)+'번'):('종이 '+m.slice(2)+'번');}
+
+// ─── 서버 통신 ───
+function post(body){
+  body.key=APIKEY;
+  return fetch(ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),redirect:'follow'})
+    .then(function(r){return r.json();});
+}
+var flushing=false;
+function flush(){
+  if(!ENDPOINT||!queue.length||flushing)return Promise.resolve(false);
+  flushing=true;
+  var batch=queue.slice(0,80);
+  return post({records:batch}).then(function(res){
+    flushing=false;
+    if(res&&res.ok){
+      batch.forEach(function(rec){
+        var m=serverAnswered[rec.pid]=serverAnswered[rec.pid]||{};
+        m[rec.trial-1]=true;
+      });
+      queue=queue.slice(batch.length);saveQueue();
+      serverOk=true;render();
+      if(queue.length)return flush();
+      return true;
+    }
+    serverOk=false;render();return false;
+  },function(){flushing=false;serverOk=false;render();return false;});
+}
+function refresh(){
+  if(!ENDPOINT)return Promise.resolve(false);
+  return fetch(ENDPOINT,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+    if(res&&res.ok){
+      serverAnswered={};
+      for(var pid in (res.answered||{})){
+        if(!ORDERS[pid])continue;
+        var m=serverAnswered[pid]={};
+        res.answered[pid].forEach(function(tr){if(tr>=1&&tr<=40)m[tr-1]=true;});
+      }
+      serverOk=true;render();return true;
+    }
+    serverOk=false;render();return false;
+  },function(){serverOk=false;render();return false;});
+}
+setInterval(function(){if(queue.length)flush();},30000);
+window.addEventListener('online',function(){if(queue.length)flush();});
+
+// ─── 라우팅 ───
+var route={v:'home'};
+try{var rr=JSON.parse(sessionStorage.getItem(SS_ROUTE)||'null');if(rr&&rr.v)route=rr;}catch(e){}
+function setRoute(r){route=r;try{sessionStorage.setItem(SS_ROUTE,JSON.stringify(r));}catch(e){}}
+function go(r){setRoute(r);render();window.scrollTo(0,0);}
+function sanitizeRoute(){
+  if((route.v==='prep'||route.v==='rate'||route.v==='start'||route.v==='done')&&!ORDERS[route.pid]){route={v:'home'};return;}
+  if(route.v==='prep'||route.v==='rate'){
+    var n=nextIdx(route.pid);
+    if(n>=40){route={v:'done',pid:route.pid};}
+    else if(route.idx===undefined||route.idx<n){route={v:'prep',pid:route.pid,idx:n};}
+  }
+}
+
+var app=document.getElementById('app');
+var draft=[];
+
+function bannerHTML(){
+  if(!ENDPOINT)return '<div class="banner">구글 시트 연결 전 — index.html 상단의 ENDPOINT에 Apps Script 웹 앱 URL을 넣어야 서버 저장이 됩니다. 지금은 이 기기에만 저장돼요.</div>';
+  if(queue.length)return '<div class="banner">서버 전송 대기 '+queue.length+'건 — 응답은 이 기기에 보관 중이고, 연결되면 자동으로 전송됩니다.</div>';
+  if(serverOk===false)return '<div class="banner">구글 시트 연결 확인 실패 — 인터넷/배포 설정을 확인하세요. 응답은 이 기기에 저장되고 있습니다.</div>';
+  return '';
+}
+
+function render(){
+  var v=route.v;
+  if(v==='start')renderStart();
+  else if(v==='prep')renderPrep();
+  else if(v==='rate')renderRate();
+  else if(v==='done')renderDone();
+  else if(v==='admin')renderAdmin();
+  else renderHome();
+}
+
+function renderHome(){
+  var doneN=0,partN=0,cells='';
+  for(var i=0;i<PIDS.length;i++){
+    var pid=PIDS[i],c=countOf(pid);
+    var cls='pbtn',st='시작 전';
+    if(c>=40){cls+=' done';st='완료';doneN++;}
+    else if(c>0){cls+=' part';st=c+' / 40';partN++;}
+    cells+='<button class="'+cls+'" data-act="pick" data-pid="'+pid+'"><span class="pid mono">'+pid+'</span><span class="st">'+st+'</span></button>';
+  }
+  app.innerHTML='<div class="wrap">'+bannerHTML()
+    +'<p class="eyebrow">사전 자극물 선정 · 라이트 박스 실험</p>'
+    +'<h1>재질 시각 평가</h1>'
+    +'<p class="sub">재활용 플라스틱 20종 · 종이 20종 — 피험자를 선택하면 지정된 순서로 평가가 진행됩니다.</p>'
+    +'<div class="stats"><span>완료 <b>'+doneN+'</b>명</span><span>진행 중 <b>'+partN+'</b>명</span><span>누적 응답 <b>'+totalCount()+'</b> / '+TOTAL+'</span></div>'
+    +'<div class="pgrid">'+cells+'</div>'
+    +'<div class="foot"><button class="btn ghost" data-act="admin">기록 관리 · 내보내기</button></div>'
+    +'</div>';
+}
+
+function renderStart(){
+  var pid=route.pid,c=countOf(pid);
+  var resume=c>0&&c<40;
+  app.innerHTML='<div class="wrap">'+bannerHTML()
+    +'<button class="backlink" data-act="home">← 피험자 선택</button>'
+    +'<div class="card center">'
+    +'<p class="eyebrow">피험자</p>'
+    +'<div class="codechip">'+pid+'</div>'
+    +'<p class="codesub">'+(resume?('지금까지 '+c+' / 40개 완료 — 이어서 진행합니다'):'새 세션 · 재료 40개')+'</p>'
+    +'</div>'
+    +'<div class="card" style="margin-top:14px">'
+    +'<p class="sectlab">평가 안내</p><ul class="guide">'
+    +'<li>눈으로만(시각) 판단합니다. 시편을 손으로 만지지 않습니다.</li>'
+    +'<li>재료 40개가 정해진 순서로 제시되며, 재료마다 같은 9개 문항에 응답합니다.</li>'
+    +'<li>각 문항은 두 표현 사이 5점 척도입니다. 가까운 쪽에 표시해 주세요.</li>'
+    +'<li>정답은 없습니다. 보이는 인상 그대로 응답하면 됩니다.</li>'
+    +'</ul></div>'
+    +'<div class="btnrow"><button class="btn wide" data-act="begin">'+(resume?'이어서 시작':'평가 시작')+'</button></div>'
+    +'</div>';
+}
+
+function renderPrep(){
+  var pid=route.pid,idx=route.idx;
+  app.innerHTML='<div class="wrap">'+bannerHTML()
+    +'<div class="card center" style="margin-top:26px">'
+    +'<p class="eyebrow">진행자 확인 · 시편 교체</p>'
+    +'<p class="trialnum" style="margin-top:10px">'+pid+' · 재료 '+(idx+1)+' / 40</p>'
+    +'<button class="codechip masked" data-act="reveal" id="codechip">코드 확인</button>'
+    +'<p class="codesub" id="codesub">참가자가 보지 않을 때 위 버튼을 눌러 시편 코드를 확인하세요.</p>'
+    +'<p class="hint" style="margin-top:14px">라이트 박스에 시편을 놓은 뒤, 참가자에게 화면을 보여 주세요.<br>평가 화면에는 시편 코드가 표시되지 않습니다.</p>'
+    +'</div>'
+    +'<div class="btnrow"><button class="btn wide" data-act="rate">평가 화면으로</button>'
+    +'<button class="btn ghost wide" data-act="home">중단하고 나가기 (진행 상황 저장됨)</button></div>'
+    +'</div>';
+}
+
+function renderRate(){
+  var pid=route.pid,idx=route.idx;
+  var doneCnt=countOf(pid);
+  var rows='',lastSect='';
+  for(var i=0;i<ITEMS.length;i++){
+    var it=ITEMS[i];
+    if(it.s!==lastSect){
+      if(lastSect)rows+='</div>';
+      rows+='<div class="sect"><p class="sectlab">'+SECTIONS[it.s]+'</p>';
+      lastSect=it.s;
+    }
+    var dots='';
+    for(var v=1;v<=5;v++){
+      dots+='<button class="dot" data-act="dot" data-item="'+i+'" data-val="'+v+'" aria-pressed="'+(draft[i]===v?'true':'false')+'">'+v+'</button>';
+    }
+    rows+='<div class="item" data-row="'+i+'"><div class="poles"><span>'+it.l+'</span><span class="r">'+it.r+'</span></div><div class="dots">'+dots+'</div></div>';
+  }
+  rows+='</div>';
+  var last=idx>=39;
+  app.innerHTML='<div class="wrap">'
+    +'<div class="topbar"><div class="topline"><span class="mono">'+pid+'</span><span>재료 <b>'+(idx+1)+'</b> / 40</span></div>'
+    +'<div class="bar"><i style="width:'+Math.round(doneCnt/40*100)+'%"></i></div></div>'
+    +bannerHTML()
+    +'<p class="hint">시편을 눈으로만 보고, 각 문항에서 두 표현 중 가까운 쪽에 표시해 주세요. (3 = 중간)</p>'
+    +rows
+    +'<p class="missnote" id="missnote">아직 응답하지 않은 문항이 있습니다.</p>'
+    +'<div class="btnrow"><button class="btn wide" data-act="next">'+(last?'평가 완료 · 저장':'다음 재료 · 저장')+'</button></div>'
+    +'</div>';
+}
+
+function renderDone(){
+  var pid=route.pid;
+  app.innerHTML='<div class="wrap center" style="padding-top:60px">'+bannerHTML()
+    +'<div class="card" style="padding:36px 24px">'
+    +'<div class="donemark">✓</div>'
+    +'<h1 style="font-size:22px">'+pid+' 세션 완료</h1>'
+    +'<p class="sub">재료 40개 평가가 모두 기록되었습니다.<br>참여해 주셔서 감사합니다.</p>'
+    +'</div>'
+    +'<div class="btnrow"><button class="btn wide" data-act="home">피험자 선택으로</button></div>'
+    +'</div>';
+}
+
+function renderAdmin(){
+  var rows='';
+  for(var i=0;i<PIDS.length;i++){
+    var pid=PIDS[i],c=countOf(pid);
+    var lc=records[pid]||{},lastT=0,k;
+    for(k in lc){if(lc[k].t>lastT)lastT=lc[k].t;}
+    var tag=c>=40?'<span class="tag done">완료</span>':(c>0?'<span class="tag part">진행 중</span>':'<span class="tag">시작 전</span>');
+    var d=lastT?new Date(lastT):null;
+    function z(n){return (n<10?'0':'')+n;}
+    var tstr=d?(d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())):'—';
+    rows+='<tr><td class="mono">'+pid+'</td><td>'+tag+'</td><td>'+c+' / 40</td><td>'+tstr+'</td>'
+      +'<td>'+(c>0?'<button class="del" data-act="del" data-pid="'+pid+'">초기화</button>':'')+'</td></tr>';
+  }
+  var sheetBtn=SHEET_URL?'<a class="btn" href="'+SHEET_URL+'" target="_blank" rel="noopener">구글 시트 열기</a>':'';
+  var syncLabel=serverOk===true?'시트 연결됨':(serverOk===false?'시트 연결 안 됨':'확인 중');
+  app.innerHTML='<div class="wrap wide">'+bannerHTML()
+    +'<button class="backlink" data-act="home">← 홈으로</button>'
+    +'<div class="admhead"><div><p class="eyebrow">기록 관리 · '+syncLabel+'</p><h1 style="font-size:22px">응답 현황 <span class="mono" style="font-weight:500;font-size:16px;color:var(--muted)">'+totalCount()+' / '+TOTAL+'</span></h1></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+sheetBtn
+    +'<button class="btn ghost" data-act="refresh">새로고침</button>'
+    +'<button class="btn ghost" data-act="retry">대기분 전송'+(queue.length?(' ('+queue.length+')'):'')+'</button>'
+    +'<button class="btn ghost" data-act="csv">CSV (이 기기 기록)</button></div></div>'
+    +'<div class="card tscroll" style="padding:6px 14px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="note"><b>데이터 원본은 구글 시트입니다.</b> 분석용 전체 데이터는 시트에서 파일 → 다운로드 → Excel(.xlsx)로 받으세요. 여기 CSV 버튼은 이 기기에서 기록된 분량만 내보냅니다.</div>'
+    +'<div class="note"><b>제시 순서 자동 보정 안내</b> — 원본 순서 파일의 중복·누락 3건 보정: P06 39번째 P_10→P_18 · P29 27번째 PL_9→PL_20 · P31 35번째 PL_7→PL_17.</div>'
+    +'<div class="note">피험자 초기화는 구글 시트와 이 기기에서 해당 피험자의 응답을 모두 삭제합니다. 버튼을 두 번 눌러야 실행됩니다.</div>'
+    +'</div>';
+}
+
+function buildCSV(){
+  var head=['participant','trial','material','category'];
+  for(var i=0;i<ITEMS.length;i++)head.push('q'+(i+1)+'_'+ITEMS[i].l.replace(/\s/g,'')+'-'+ITEMS[i].r.replace(/\s/g,''));
+  head.push('timestamp');
+  var lines=[head.join(',')];
+  for(var p=0;p<PIDS.length;p++){
+    var pid=PIDS[p],r=records[pid]||{};
+    for(var idx=0;idx<40;idx++){
+      var rec=r[idx];if(!rec)continue;
+      var row=[pid,idx+1,rec.m,rec.m.indexOf('PL_')===0?'plastic':'paper'];
+      for(var q=0;q<ITEMS.length;q++)row.push(rec.r[q]);
+      row.push(new Date(rec.t).toISOString());
+      lines.push(row.join(','));
+    }
+  }
+  return '﻿'+lines.join('\r\n');
+}
+function blobSave(name,data,type){
+  var blob=new Blob([data],{type:type});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+
+var armTimer=null,revealTimer=null;
+var MASK_MSG='참가자가 보지 않을 때 위 버튼을 눌러 시편 코드를 확인하세요.';
+function maskChip(chip,sub){chip.classList.add('masked');chip.textContent='코드 확인';sub.textContent=MASK_MSG;}
+
+app.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  var act=b.dataset.act;if(!act)return;
+  if(act==='home'){go({v:'home'});}
+  else if(act==='admin'){go({v:'admin'});refresh();}
+  else if(act==='pick'){
+    var pid=b.dataset.pid;
+    if(countOf(pid)>=40){go({v:'done',pid:pid});}
+    else go({v:'start',pid:pid});
+  }
+  else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
+  else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
+  else if(act==='reveal'){
+    var chip=document.getElementById('codechip'),sub=document.getElementById('codesub');
+    var mm=ORDERS[route.pid][route.idx];
+    clearTimeout(revealTimer);
+    if(chip.classList.contains('masked')){
+      chip.classList.remove('masked');chip.textContent=mm;sub.textContent=matName(mm);
+      revealTimer=setTimeout(function(){if(document.getElementById('codechip')===chip)maskChip(chip,sub);},4000);
+    }else{maskChip(chip,sub);}
+  }
+  else if(act==='dot'){
+    var i=+b.dataset.item,val=+b.dataset.val;
+    draft[i]=val;
+    var row=app.querySelector('[data-row="'+i+'"]');
+    row.classList.remove('miss');
+    var dots=row.querySelectorAll('.dot');
+    for(var d=0;d<dots.length;d++)dots[d].setAttribute('aria-pressed',dots[d]===b?'true':'false');
+  }
+  else if(act==='next'){
+    var missing=-1;
+    for(var q=0;q<ITEMS.length;q++){
+      var ok=draft[q]>=1&&draft[q]<=5;
+      var rw=app.querySelector('[data-row="'+q+'"]');
+      rw.classList.toggle('miss',!ok);
+      if(!ok&&missing<0)missing=q;
+    }
+    if(missing>=0){
+      document.getElementById('missnote').classList.add('show');
+      app.querySelector('[data-row="'+missing+'"]').scrollIntoView({block:'center'});
+      return;
+    }
+    var pid2=route.pid,idx2=route.idx,m2=ORDERS[pid2][idx2];
+    var now=Date.now();
+    (records[pid2]=records[pid2]||{})[idx2]={m:m2,r:draft.slice(0,9),t:now};
+    saveRecords();
+    queue.push({pid:pid2,trial:idx2+1,material:m2,category:m2.indexOf('PL_')===0?'plastic':'paper',
+      ratings:draft.slice(0,9),timestamp:new Date(now).toISOString(),client:deviceId});
+    saveQueue();
+    draft=[];
+    go(idx2+1>=40?{v:'done',pid:pid2}:{v:'prep',pid:pid2,idx:idx2+1});
+    flush();
+  }
+  else if(act==='del'){
+    var pid3=b.dataset.pid;
+    if(!b.classList.contains('arm')){
+      b.classList.add('arm');b.textContent='정말 삭제?';
+      clearTimeout(armTimer);
+      armTimer=setTimeout(function(){b.classList.remove('arm');b.textContent='초기화';},3000);
+      return;
+    }
+    clearTimeout(armTimer);
+    delete records[pid3];saveRecords();
+    delete serverAnswered[pid3];
+    queue=queue.filter(function(r){return r.pid!==pid3;});saveQueue();
+    if(ENDPOINT){post({action:'reset',pid:pid3}).then(function(){refresh();},function(){serverOk=false;render();});}
+    render();
+  }
+  else if(act==='csv'){blobSave('재질평가_이기기기록.csv',buildCSV(),'text/csv;charset=utf-8');}
+  else if(act==='refresh'){refresh();}
+  else if(act==='retry'){flush();}
+});
+
+sanitizeRoute();
+render();
+refresh().then(function(){sanitizeRoute();render();if(queue.length)flush();});
+})();
+</script>
+</body>
+</html>
