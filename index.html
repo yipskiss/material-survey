@@ -114,8 +114,10 @@ body.big-dots .dot{width:58px;height:58px;font-size:16px}
 .toolrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .ordergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin-top:10px}
-.ocell{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px;display:flex;gap:7px;align-items:baseline;background:var(--surface)}
+.ocell{border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:13px;display:flex;gap:7px;align-items:baseline;background:var(--surface);text-align:left;width:100%}
 .ocell.odone{opacity:.4}
+.ocell.ochk{border-color:var(--accent)}
+.omark{color:var(--accent);font-weight:600;margin-left:auto}
 .onum{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;min-width:16px}
 </style>
 </head>
@@ -166,6 +168,11 @@ try{
 
 function saveRecords(){try{localStorage.setItem(LS_REC,JSON.stringify(records));}catch(e){}}
 function saveQueue(){try{localStorage.setItem(LS_Q,JSON.stringify(queue));}catch(e){}}
+
+var LS_CHK='mtgh_check_v1';
+var checks={};
+try{checks=JSON.parse(localStorage.getItem(LS_CHK)||'{}')||{};}catch(e){checks={};}
+function saveChecks(){try{localStorage.setItem(LS_CHK,JSON.stringify(checks));}catch(e){}}
 
 var settings={test:false,bigText:false,bigDots:false};
 try{var st=JSON.parse(localStorage.getItem(LS_SET)||'null');if(st)settings={test:!!st.test,bigText:!!st.bigText,bigDots:!!st.bigDots};}catch(e){}
@@ -367,6 +374,18 @@ function renderDone(){
     +'</div>';
 }
 
+function renderOrderBox(op){
+  var os=answeredSet(op),ck=checks[op]||{},oh='<div class="ordergrid">';
+  ORDERS[op].forEach(function(m,i){
+    oh+='<button class="ocell'+(os[i]?' odone':'')+(ck[i]?' ochk':'')+'" data-act="ocell" data-pid="'+op+'" data-idx="'+i+'">'
+      +'<span class="onum">'+(i+1)+'</span><span class="mono">'+m+'</span>'+(ck[i]?'<span class="omark">✓</span>':'')+'</button>';
+  });
+  oh+='</div>';
+  document.getElementById('orderbox').innerHTML=
+    '<p class="hint">'+op+' 제시 순서 — 흐린 항목은 응답이 저장된 재료, 칸을 탭하면 진행자 체크(✓)를 켜고 끌 수 있어요 (이 기기에만 저장되는 메모, 실험 데이터와 무관).</p>'
+    +oh
+    +'<div class="toolrow"><button class="btn ghost" data-act="clearchk" data-pid="'+op+'">'+op+' 체크 모두 지우기</button></div>';
+}
 function renderAdmin(){
   var rows='';
   for(var i=0;i<PIDS.length;i++){
@@ -453,13 +472,15 @@ app.addEventListener('click',function(e){
   }
   else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
-  else if(act==='showorder'){
-    var op=document.getElementById('orderpid').value;
-    var os=answeredSet(op),oh='<div class="ordergrid">';
-    ORDERS[op].forEach(function(m,i){oh+='<div class="ocell'+(os[i]?' odone':'')+'"><span class="onum">'+(i+1)+'</span><span class="mono">'+m+'</span></div>';});
-    oh+='</div>';
-    document.getElementById('orderbox').innerHTML='<p class="hint">'+op+' 제시 순서 — 흐린 항목은 이미 응답이 저장된 재료입니다.</p>'+oh;
+  else if(act==='showorder'){renderOrderBox(document.getElementById('orderpid').value);}
+  else if(act==='ocell'){
+    var cp=b.dataset.pid,ci=+b.dataset.idx;
+    var cm=checks[cp]=checks[cp]||{};
+    if(cm[ci])delete cm[ci];else cm[ci]=true;
+    if(!Object.keys(cm).length)delete checks[cp];
+    saveChecks();renderOrderBox(cp);
   }
+  else if(act==='clearchk'){delete checks[b.dataset.pid];saveChecks();renderOrderBox(b.dataset.pid);}
   else if(act==='dot'){
     var i=+b.dataset.item,val=+b.dataset.val;
     draft[i]=val;
