@@ -119,6 +119,10 @@ body.big-dots .dotrow::before{left:29px;right:29px}
 .btn.ghost[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:600}
 .toolrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.frm{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.frm .full{grid-column:1/-1}
+.frm label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.frm input,.frm select{width:100%;font:inherit;font-size:14px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .ordergrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px;margin-top:10px}
 .ocell{border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:13px;display:flex;gap:7px;align-items:baseline;background:var(--surface);text-align:left;width:100%}
 .ocell.odone{opacity:.4}
@@ -174,6 +178,12 @@ try{
 
 function saveRecords(){try{localStorage.setItem(LS_REC,JSON.stringify(records));}catch(e){}}
 function saveQueue(){try{localStorage.setItem(LS_Q,JSON.stringify(queue));}catch(e){}}
+
+var LS_PAY='mtgh_pay_v1';
+var payInfo=[];
+try{payInfo=JSON.parse(localStorage.getItem(LS_PAY)||'[]')||[];}catch(e){payInfo=[];}
+function savePay(){try{localStorage.setItem(LS_PAY,JSON.stringify(payInfo));}catch(e){}}
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 var LS_CHK='mtgh_check_v1';
 var checks={};
@@ -380,6 +390,74 @@ function renderDone(){
     +'</div>';
 }
 
+function showPayModal(){
+  var d=new Date();function z(n){return(n<10?'0':'')+n;}
+  var today=d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate());
+  var opts='<option value="">선택 안 함</option>'+PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+  var m=document.createElement('div');m.className='modal';
+  m.innerHTML='<div class="box" style="max-height:90vh;overflow-y:auto"><p style="font-weight:700">참여비 지급 정보 입력</p>'
+    +'<p class="hint">이 정보는 이 기기 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>'
+    +'<div class="frm">'
+    +'<div><label>피험자 번호</label><select id="pp_pid">'+opts+'</select></div>'
+    +'<div><label>성명 *</label><input id="pp_name"></div>'
+    +'<div><label>주민등록번호</label><input id="pp_rrn" placeholder="000000-0000000"></div>'
+    +'<div><label>연락처</label><input id="pp_phone" placeholder="01000000000"></div>'
+    +'<div><label>소속</label><input id="pp_org"></div>'
+    +'<div><label>직위</label><input id="pp_pos" placeholder="학부생 등"></div>'
+    +'<div class="full"><label>활용일시</label><input id="pp_dt" value="'+today+' (00:00~00:00)"></div>'
+    +'<div class="full"><label>주소</label><input id="pp_addr"></div>'
+    +'<div><label>청구금액</label><input id="pp_amt" value="7000"></div>'
+    +'<div><label>은행</label><input id="pp_bank"></div>'
+    +'<div><label>예금주</label><input id="pp_holder"></div>'
+    +'<div><label>계좌번호</label><input id="pp_acct"></div>'
+    +'</div><p class="hint" data-msg="1"></p>'
+    +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-close="1">닫기</button><button class="btn" data-save="1">저장</button></div></div>';
+  m.addEventListener('click',function(e){
+    if(e.target===m||e.target.dataset.close){m.remove();return;}
+    if(e.target.dataset.save){
+      function v(id){return (m.querySelector('#'+id).value||'').trim();}
+      if(!v('pp_name')){m.querySelector('[data-msg]').textContent='성명은 필수입니다.';return;}
+      payInfo.push({pid:v('pp_pid'),name:v('pp_name'),rrn:v('pp_rrn'),org:v('pp_org'),pos:v('pp_pos'),dt:v('pp_dt'),phone:v('pp_phone'),addr:v('pp_addr'),amt:v('pp_amt'),bank:v('pp_bank'),holder:v('pp_holder'),acct:v('pp_acct'),t:Date.now()});
+      savePay();m.remove();render();
+    }
+  });
+  document.body.appendChild(m);
+}
+function showPayImportModal(){
+  var m=document.createElement('div');m.className='modal';
+  m.innerHTML='<div class="box"><p style="font-weight:700">지급 정보 JSON 가져오기</p><p class="hint">다른 기기에서 내보낸 백업(JSON)을 붙여넣으면 목록 뒤에 추가됩니다.</p><textarea></textarea><p class="hint" data-msg="1"></p><div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-close="1">닫기</button><button class="btn" data-merge="1">추가</button></div></div>';
+  m.addEventListener('click',function(e){
+    if(e.target===m||e.target.dataset.close){m.remove();return;}
+    if(e.target.dataset.merge){
+      var msg=m.querySelector('[data-msg]');
+      try{
+        var obj=JSON.parse(m.querySelector('textarea').value);
+        var list=obj.pay||obj;
+        if(!Object.prototype.toString.call(list).includes('Array'))throw 0;
+        var n=0;list.forEach(function(p){if(p&&p.name){payInfo.push(p);n++;}});
+        savePay();msg.textContent=n+'건 추가됨';render();
+      }catch(err){msg.textContent='JSON을 읽을 수 없습니다. 백업 파일 내용을 그대로 붙여넣어 주세요.';}
+    }
+  });
+  document.body.appendChild(m);
+}
+function payCSV(){
+  function esc(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}
+  var lines=['연번,성명,주민번호,소속,직위,활용일시,연락처,주소,청구금액,계좌정보'];
+  payInfo.forEach(function(p,i){
+    var acct=[p.bank,p.holder,p.acct].filter(Boolean).join(', ');
+    lines.push([i+1,esc(p.name),esc(p.rrn),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(acct)].join(','));
+  });
+  return '﻿'+lines.join('\r\n');
+}
+function payTableHTML(){
+  if(!payInfo.length)return '<p class="hint">아직 입력된 정보가 없습니다.</p>';
+  var r='<div class="tscroll"><table><thead><tr><th>연번</th><th>피험자</th><th>성명</th><th>주민번호</th><th>연락처</th><th>청구금액</th><th></th></tr></thead><tbody>';
+  payInfo.forEach(function(p,i){
+    r+='<tr><td>'+(i+1)+'</td><td class="mono">'+(p.pid||'—')+'</td><td>'+escHtml(p.name)+'</td><td>'+escHtml(p.rrn)+'</td><td>'+escHtml(p.phone)+'</td><td>'+escHtml(p.amt)+'</td><td><button class="del" data-act="pay-del" data-i="'+i+'">삭제</button></td></tr>';
+  });
+  return r+'</tbody></table></div>';
+}
 var orderShown=null;
 function renderOrderBox(op){
   orderShown=op;
@@ -424,6 +502,15 @@ function renderAdmin(){
     +PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')
     +'</select><button class="btn ghost" data-act="showorder">순서 보기</button></div>'
     +'<div id="orderbox"></div></div>'
+    +'<div class="card" style="margin-top:16px"><p class="sectlab">참여비 지급 정보 (이 기기에만 저장)</p>'
+    +payTableHTML()
+    +'<div class="toolrow"><button class="btn" data-act="pay-open">＋ 정보 입력</button>'
+    +(payInfo.length?'<button class="btn ghost" data-act="pay-csv">엑셀용 CSV 내보내기</button><button class="btn ghost" data-act="pay-json">JSON 백업</button>':'')
+    +'<button class="btn ghost" data-act="pay-import">JSON 가져오기</button>'
+    +(payInfo.length?'<button class="btn ghost" data-act="pay-clear" style="color:var(--danger)">전체 삭제</button>':'')
+    +'</div>'
+    +'<p class="hint">주민번호·계좌번호가 포함되므로 서버나 구글 시트로는 전송하지 않고 이 기기에만 보관합니다. 청구 시스템 업로드가 끝나면 [전체 삭제]로 지우고, 기기 잠금(암호)을 꼭 사용하세요. CSV는 청구 양식 순서(연번·성명·주민번호·소속·직위·활용일시·연락처·주소·청구금액·계좌정보) 그대로 나옵니다.</p>'
+    +'</div>'
     +'<div class="card" style="margin-top:16px"><p class="sectlab">화면 · 테스트 설정</p>'
     +'<div class="toolrow">'
     +'<button class="btn ghost" data-act="tg-test" aria-pressed="'+settings.test+'">테스트 모드 '+(settings.test?'켜짐':'꺼짐')+'</button>'
@@ -586,6 +673,29 @@ app.addEventListener('click',function(e){
     queue=queue.filter(function(r){return r.pid!==pid3;});saveQueue();
     if(ENDPOINT){post({action:'reset',pid:pid3}).then(function(){refresh();},function(){serverOk=false;render();});}
     render();
+  }
+  else if(act==='pay-open'){showPayModal();}
+  else if(act==='pay-del'){
+    var pdi=+b.dataset.i;
+    if(!b.classList.contains('arm')){
+      b.classList.add('arm');b.textContent='정말 삭제?';
+      clearTimeout(armTimer);
+      armTimer=setTimeout(function(){b.classList.remove('arm');b.textContent='삭제';},3000);
+      return;
+    }
+    clearTimeout(armTimer);payInfo.splice(pdi,1);savePay();render();
+  }
+  else if(act==='pay-csv'){blobSave('참여비지급정보.csv',payCSV(),'text/csv;charset=utf-8');}
+  else if(act==='pay-json'){blobSave('참여비지급정보_백업.json',JSON.stringify({pay:payInfo}),'application/json');}
+  else if(act==='pay-import'){showPayImportModal();}
+  else if(act==='pay-clear'){
+    if(!b.classList.contains('arm')){
+      b.classList.add('arm');b.textContent='정말 전체 삭제?';
+      clearTimeout(armTimer);
+      armTimer=setTimeout(function(){b.classList.remove('arm');b.textContent='전체 삭제';},3000);
+      return;
+    }
+    clearTimeout(armTimer);payInfo=[];savePay();render();
   }
   else if(act==='csv'){blobSave('재질평가_이기기기록.csv',buildCSV(),'text/csv;charset=utf-8');}
   else if(act==='refresh'){refresh();}
