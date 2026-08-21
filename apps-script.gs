@@ -40,10 +40,20 @@ function doPost(e) {
     // 피험자 초기화 요청
     if (data.action === 'reset' && data.pid) {
       var vals = sh.getDataRange().getValues();
+      var targets = [];
       for (var i = vals.length - 1; i >= 1; i--) {
-        if (String(vals[i][0]) === String(data.pid)) sh.deleteRow(i + 1);
+        if (String(vals[i][0]) === String(data.pid)) targets.push(i + 1);
       }
-      return json_({ ok: true, reset: data.pid });
+      var dataRows = vals.length - 1;
+      // 시트의 데이터 행을 전부 삭제할 수는 없으므로, 마지막 남는 행은 내용만 비운다
+      targets.forEach(function (row, j) {
+        if (j === targets.length - 1 && targets.length === dataRows) {
+          sh.getRange(row, 1, 1, sh.getLastColumn()).clearContent();
+        } else {
+          sh.deleteRow(row);
+        }
+      });
+      return json_({ ok: true, reset: data.pid, removed: targets.length });
     }
 
     // 응답 저장 (중복 pid+trial은 최초 것 유지)
