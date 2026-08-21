@@ -184,6 +184,11 @@ var payInfo=[];
 try{payInfo=JSON.parse(localStorage.getItem(LS_PAY)||'[]')||[];}catch(e){payInfo=[];}
 function savePay(){try{localStorage.setItem(LS_PAY,JSON.stringify(payInfo));}catch(e){}}
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function maskRRN(s){
+  var d=String(s==null?'':s).replace(/[^0-9]/g,'');
+  if(d.length>=7)return d.slice(0,6)+'-'+d.charAt(6);
+  return String(s==null?'':s);
+}
 
 var LS_CHK='mtgh_check_v1';
 var checks={};
@@ -441,20 +446,30 @@ function showPayImportModal(){
   });
   document.body.appendChild(m);
 }
-function payCSV(){
+function payCSV(mask){
   function esc(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}
-  var lines=['연번,성명,주민번호,소속,직위,활용일시,연락처,주소,청구금액,계좌정보'];
-  payInfo.forEach(function(p,i){
-    var acct=[p.bank,p.holder,p.acct].filter(Boolean).join(', ');
-    lines.push([i+1,esc(p.name),esc(p.rrn),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(acct)].join(','));
-  });
+  var lines;
+  if(mask){
+    // 증빙용: 제출 서류 양식 (주민번호 마스킹, 계좌정보 합침)
+    lines=['연번,성명,주민번호,소속,직위,활용일시,연락처,주소,청구금액,계좌정보'];
+    payInfo.forEach(function(p,i){
+      var acct=[p.bank,p.holder,p.acct].filter(Boolean).join(', ');
+      lines.push([i+1,esc(p.name),esc(maskRRN(p.rrn)),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(acct)].join(','));
+    });
+  }else{
+    // 수기입력용: 청구 시스템 화면의 입력 순서 그대로 (예금주 → 은행 → 계좌번호 분리)
+    lines=['연번,성명,주민등록번호,소속,직위,활용일시,연락처,주소,청구금액,예금주,은행,계좌번호'];
+    payInfo.forEach(function(p,i){
+      lines.push([i+1,esc(p.name),esc(p.rrn),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(p.holder),esc(p.bank),esc(p.acct)].join(','));
+    });
+  }
   return '﻿'+lines.join('\r\n');
 }
 function payTableHTML(){
   if(!payInfo.length)return '<p class="hint">아직 입력된 정보가 없습니다.</p>';
   var r='<div class="tscroll"><table><thead><tr><th>연번</th><th>피험자</th><th>성명</th><th>주민번호</th><th>연락처</th><th>청구금액</th><th></th></tr></thead><tbody>';
   payInfo.forEach(function(p,i){
-    r+='<tr><td>'+(i+1)+'</td><td class="mono">'+(p.pid||'—')+'</td><td>'+escHtml(p.name)+'</td><td>'+escHtml(p.rrn)+'</td><td>'+escHtml(p.phone)+'</td><td>'+escHtml(p.amt)+'</td><td><button class="del" data-act="pay-del" data-i="'+i+'">삭제</button></td></tr>';
+    r+='<tr><td>'+(i+1)+'</td><td class="mono">'+(p.pid||'—')+'</td><td>'+escHtml(p.name)+'</td><td>'+escHtml(maskRRN(p.rrn))+'</td><td>'+escHtml(p.phone)+'</td><td>'+escHtml(p.amt)+'</td><td><button class="del" data-act="pay-del" data-i="'+i+'">삭제</button></td></tr>';
   });
   return r+'</tbody></table></div>';
 }
@@ -505,11 +520,11 @@ function renderAdmin(){
     +'<div class="card" style="margin-top:16px"><p class="sectlab">참여비 지급 정보 (이 기기에만 저장)</p>'
     +payTableHTML()
     +'<div class="toolrow"><button class="btn" data-act="pay-open">＋ 정보 입력</button>'
-    +(payInfo.length?'<button class="btn ghost" data-act="pay-csv">엑셀용 CSV 내보내기</button><button class="btn ghost" data-act="pay-json">JSON 백업</button>':'')
+    +(payInfo.length?'<button class="btn ghost" data-act="pay-csv-full">CSV — 수기입력용 (주민번호 전체)</button><button class="btn ghost" data-act="pay-csv-mask">CSV — 증빙용 (주민번호 마스킹)</button><button class="btn ghost" data-act="pay-json">JSON 백업</button>':'')
     +'<button class="btn ghost" data-act="pay-import">JSON 가져오기</button>'
     +(payInfo.length?'<button class="btn ghost" data-act="pay-clear" style="color:var(--danger)">전체 삭제</button>':'')
     +'</div>'
-    +'<p class="hint">주민번호·계좌번호가 포함되므로 서버나 구글 시트로는 전송하지 않고 이 기기에만 보관합니다. 청구 시스템 업로드가 끝나면 [전체 삭제]로 지우고, 기기 잠금(암호)을 꼭 사용하세요. CSV는 청구 양식 순서(연번·성명·주민번호·소속·직위·활용일시·연락처·주소·청구금액·계좌정보) 그대로 나옵니다.</p>'
+    +'<p class="hint">주민번호·계좌번호가 포함되므로 서버나 구글 시트로는 전송하지 않고 이 기기에만 보관합니다. 입력은 주민번호 전체로 하면, 내보내기에서 두 가지로 나뉩니다 — <b>수기입력용</b>(전체 번호, 청구 시스템 입력할 때 보는 용도) / <b>증빙용</b>(앞 6자리-뒷자리 첫 숫자만, 제출·보관 서류용). 화면 목록에도 마스킹된 번호만 표시됩니다. 업로드가 끝나면 [전체 삭제]로 지우고 기기 잠금을 사용하세요.</p>'
     +'</div>'
     +'<div class="card" style="margin-top:16px"><p class="sectlab">화면 · 테스트 설정</p>'
     +'<div class="toolrow">'
@@ -685,7 +700,8 @@ app.addEventListener('click',function(e){
     }
     clearTimeout(armTimer);payInfo.splice(pdi,1);savePay();render();
   }
-  else if(act==='pay-csv'){blobSave('참여비지급정보.csv',payCSV(),'text/csv;charset=utf-8');}
+  else if(act==='pay-csv-full'){blobSave('참여비지급정보_수기입력용.csv',payCSV(false),'text/csv;charset=utf-8');}
+  else if(act==='pay-csv-mask'){blobSave('참여비지급정보_증빙용.csv',payCSV(true),'text/csv;charset=utf-8');}
   else if(act==='pay-json'){blobSave('참여비지급정보_백업.json',JSON.stringify({pay:payInfo}),'application/json');}
   else if(act==='pay-import'){showPayImportModal();}
   else if(act==='pay-clear'){
