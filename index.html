@@ -84,10 +84,12 @@ button.codechip{cursor:pointer}
 .items{margin-top:14px}
 .item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px 16px;margin-bottom:10px}
 .item.miss{border-color:var(--danger)}
-.poles{display:flex;justify-content:space-between;gap:12px;font-size:16px;font-weight:500}
+.poles{display:flex;justify-content:space-between;gap:12px;font-size:18px;font-weight:500}
 .poles .r{text-align:right}
-.dots{display:flex;justify-content:space-between;margin-top:12px;padding:0 2px}
-.dot{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s}
+.dots{display:flex;justify-content:center;margin-top:14px}
+.dotrow{position:relative;display:flex;flex:1 1 auto;max-width:400px;justify-content:space-between}
+.dotrow::before{content:"";position:absolute;top:50%;left:23px;right:23px;height:1.5px;background:var(--line);transform:translateY(-50%)}
+.dot{position:relative;background:var(--surface);width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s}
 .dot:hover{border-color:var(--accent)}
 .dot[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-on);font-weight:600}
 .missnote{color:var(--danger);font-size:13.5px;margin:4px 0 10px;display:none}
@@ -111,6 +113,9 @@ td{padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tab
 .modal textarea{width:100%;height:240px;margin:12px 0;font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
 body.big-text{font-size:17.5px}
 body.big-dots .dot{width:58px;height:58px;font-size:16px}
+body.big-dots .dotrow{max-width:460px}
+body.big-dots .dotrow::before{left:29px;right:29px}
+@media (max-width:420px){body.big-dots .dot{width:50px;height:50px}}
 .btn.ghost[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:600}
 .toolrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
@@ -344,7 +349,7 @@ function renderRate(){
     for(var v=1;v<=5;v++){
       dots+='<button class="dot" data-act="dot" data-item="'+i+'" data-val="'+v+'" aria-pressed="'+(draft[i]===v?'true':'false')+'">'+v+'</button>';
     }
-    rows+='<div class="item" data-row="'+i+'"><div class="poles"><span>'+it.l+'</span><span class="r">'+it.r+'</span></div><div class="dots">'+dots+'</div></div>';
+    rows+='<div class="item" data-row="'+i+'"><div class="poles"><span>'+it.l+'</span><span class="r">'+it.r+'</span></div><div class="dots"><div class="dotrow">'+dots+'</div></div></div>';
   }
   rows+='</div>';
   var last=idx>=39;
