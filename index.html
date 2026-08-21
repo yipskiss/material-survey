@@ -848,6 +848,10 @@ window.addEventListener('storage',function(e){
   }
 });
 
+if('serviceWorker' in navigator){
+  try{navigator.serviceWorker.register('sw.js');}catch(e){}
+}
+
 applySettings();
 if(location.hash==='#admin')route={v:'admin'};
 else if(location.hash==='#info')route={v:'info'};
