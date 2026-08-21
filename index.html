@@ -552,15 +552,16 @@ function renderAdmin(){
     +'<button class="backlink" data-act="home">← 홈으로</button>'
     +'<div class="admhead"><div><p class="eyebrow">기록 관리 · '+syncLabel+'</p><h1 style="font-size:22px">응답 현황 <span class="mono" style="font-weight:500;font-size:16px;color:var(--muted)">'+totalCount()+' / '+TOTAL+'</span></h1></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+sheetBtn
+    +'<a class="btn ghost" href="#info" target="_blank" rel="noopener">인적사항 입력 화면</a>'
     +'<button class="btn ghost" data-act="refresh">새로고침</button>'
     +'<button class="btn ghost" data-act="retry">대기분 전송'+(queue.length?(' ('+queue.length+')'):'')+'</button>'
     +'<button class="btn ghost" data-act="csv">CSV (이 기기 기록)</button></div></div>'
-    +'<div class="card tscroll" style="padding:6px 14px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<div class="card" style="margin-top:16px"><p class="sectlab">제시 순서표 (진행자용)</p>'
-    +'<div class="toolrow" style="align-items:center"><select class="psel" id="orderpid">'
+    +'<div class="card"><p class="sectlab">제시 순서표 (진행자용 · 15초마다 자동 갱신)</p>'
+    +'<div class="toolrow" style="align-items:center;margin-top:4px"><select class="psel" id="orderpid">'
     +PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')
     +'</select><button class="btn ghost" data-act="showorder">순서 보기</button></div>'
     +'<div id="orderbox"></div></div>'
+    +'<div class="card tscroll" style="margin-top:16px;padding:6px 14px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="card" style="margin-top:16px"><p class="sectlab">참여비 지급 정보 (이 기기에만 저장)</p>'
     +payTableHTML()
     +'<div class="toolrow"><button class="btn" data-act="pay-open">＋ 정보 입력</button>'
