@@ -95,6 +95,7 @@ button.codechip{cursor:pointer}
 .missnote{color:var(--danger);font-size:13.5px;margin:4px 0 10px;display:none}
 .missnote.show{display:block}
 .donemark{width:64px;height:64px;border-radius:50%;background:var(--ok-soft);color:var(--ok);font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.eyeicon{display:flex;justify-content:center;color:var(--muted)}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
 td{padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
@@ -343,10 +344,18 @@ function renderStart(){
 }
 
 function renderPrep(){
-  app.innerHTML='<div class="wrap center" style="padding-top:96px">'+bannerHTML()
-    +'<h1 style="font-size:22px;font-weight:600">잠시만 기다려 주세요</h1>'
-    +'<p class="sub">진행자의 안내에 따라 진행됩니다.</p>'
-    +'<div class="btnrow" style="margin-top:56px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
+  var eye='<svg width="96" height="60" viewBox="0 0 88 56" fill="none" aria-hidden="true">'
+    +'<path d="M8 14 C22 34 66 34 80 14" stroke="currentColor" stroke-width="4" stroke-linecap="round" fill="none"/>'
+    +'<path d="M17 27 L10 37" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+    +'<path d="M31 32 L27 44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+    +'<path d="M44 34 L44 46" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+    +'<path d="M57 32 L61 44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+    +'<path d="M71 27 L78 37" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
+    +'</svg>';
+  app.innerHTML='<div class="wrap center" style="padding-top:64px">'+bannerHTML()
+    +'<div class="eyeicon">'+eye+'</div>'
+    +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:26px;letter-spacing:0">눈을 감은 상태로<br>진행자의 지시를 기다려 주세요</h1>'
+    +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
     +(settings.test?('<div class="toolrow" style="justify-content:center"><button class="btn ghost" data-act="tprev">◀ 이전 (←)</button>'
       +'<button class="btn ghost" data-act="tnext">다음 (→)</button>'
       +'<button class="btn ghost" data-act="trand">랜덤 저장 후 다음</button>'
