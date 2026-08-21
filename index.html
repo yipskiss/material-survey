@@ -299,6 +299,7 @@ function render(){
   else if(v==='rate')renderRate();
   else if(v==='done')renderDone();
   else if(v==='admin')renderAdmin();
+  else if(v==='info')renderInfo();
   else renderHome();
 }
 
@@ -395,6 +396,49 @@ function renderDone(){
     +'</div>';
 }
 
+var infoSaved=false;
+function infoFormHTML(){
+  var d=new Date();function z(n){return(n<10?'0':'')+n;}
+  var today=d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate());
+  var opts='<option value="">미지정</option>'+PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+  return '<div class="frm">'
+    +'<div><label>성명 *</label><input id="pi_name"></div>'
+    +'<div><label>주민등록번호</label><input id="pi_rrn" placeholder="000000-0000000"></div>'
+    +'<div><label>연락처</label><input id="pi_phone" placeholder="01000000000"></div>'
+    +'<div><label>소속</label><input id="pi_org" placeholder="학교/기관, 학과"></div>'
+    +'<div><label>직위</label><input id="pi_pos" placeholder="학부생, 대학원생 등"></div>'
+    +'<div><label>은행</label><input id="pi_bank"></div>'
+    +'<div class="full"><label>주소</label><input id="pi_addr"></div>'
+    +'<div><label>예금주</label><input id="pi_holder"></div>'
+    +'<div><label>계좌번호</label><input id="pi_acct"></div>'
+    +'</div>'
+    +'<p class="sectlab" style="margin-top:16px">진행자 기재란</p>'
+    +'<div class="frm">'
+    +'<div><label>피험자 번호</label><select id="pi_pid">'+opts+'</select></div>'
+    +'<div><label>활용일시</label><input id="pi_dt" value="'+today+' (00:00~00:00)"></div>'
+    +'<div><label>청구금액</label><input id="pi_amt" value="7000"></div>'
+    +'</div>';
+}
+function renderInfo(){
+  if(infoSaved){
+    app.innerHTML='<div class="wrap center" style="padding-top:80px">'
+      +'<div class="card" style="padding:36px 24px"><div class="donemark">✓</div>'
+      +'<h1 style="font-size:22px">저장되었습니다</h1>'
+      +'<p class="sub">감사합니다. 진행자에게 알려주세요.</p></div>'
+      +'<div class="btnrow"><button class="btn ghost wide" data-act="info-new">다음 참가자 입력</button></div>'
+      +'</div>';
+    return;
+  }
+  app.innerHTML='<div class="wrap">'
+    +'<p class="eyebrow">연구 참여 안내</p>'
+    +'<h1>참여자 정보 입력</h1>'
+    +'<p class="sub">연구 참여비 지급에 필요한 정보입니다. 입력하신 내용은 이 컴퓨터에만 저장되며, 지급 처리 후 삭제됩니다.</p>'
+    +'<div class="card" style="margin-top:16px">'+infoFormHTML()
+    +'<p class="hint" id="infomsg"></p>'
+    +'<div class="btnrow"><button class="btn wide" data-act="info-save">저장</button></div>'
+    +'</div>'
+    +'</div>';
+}
 function showPayModal(){
   var d=new Date();function z(n){return(n<10?'0':'')+n;}
   var today=d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate());
@@ -689,6 +733,13 @@ app.addEventListener('click',function(e){
     if(ENDPOINT){post({action:'reset',pid:pid3}).then(function(){refresh();},function(){serverOk=false;render();});}
     render();
   }
+  else if(act==='info-save'){
+    function gv(id){var el=document.getElementById(id);return el?(el.value||'').trim():'';}
+    if(!gv('pi_name')){document.getElementById('infomsg').textContent='성명을 입력해 주세요.';return;}
+    payInfo.push({pid:gv('pi_pid'),name:gv('pi_name'),rrn:gv('pi_rrn'),org:gv('pi_org'),pos:gv('pi_pos'),dt:gv('pi_dt'),phone:gv('pi_phone'),addr:gv('pi_addr'),amt:gv('pi_amt'),bank:gv('pi_bank'),holder:gv('pi_holder'),acct:gv('pi_acct'),t:Date.now()});
+    savePay();infoSaved=true;render();window.scrollTo(0,0);
+  }
+  else if(act==='info-new'){infoSaved=false;render();window.scrollTo(0,0);}
   else if(act==='pay-open'){showPayModal();}
   else if(act==='pay-del'){
     var pdi=+b.dataset.i;
@@ -742,12 +793,20 @@ document.addEventListener('keydown',function(e){
 
 window.addEventListener('hashchange',function(){
   if(location.hash==='#admin'){go({v:'admin'});refresh();}
-  else if(route.v==='admin'){go({v:'home'});}
+  else if(location.hash==='#info'){infoSaved=false;go({v:'info'});}
+  else if(route.v==='admin'||route.v==='info'){go({v:'home'});}
+});
+window.addEventListener('storage',function(e){
+  if(e.key===LS_PAY){
+    try{payInfo=JSON.parse(localStorage.getItem(LS_PAY)||'[]')||[];}catch(err){}
+    if(route.v==='admin')render();
+  }
 });
 
 applySettings();
 if(location.hash==='#admin')route={v:'admin'};
-else if(route.v==='admin')route={v:'home'};
+else if(location.hash==='#info')route={v:'info'};
+else if(route.v==='admin'||route.v==='info')route={v:'home'};
 sanitizeRoute();
 render();
 refresh().then(function(){sanitizeRoute();render();if(queue.length)flush();});
