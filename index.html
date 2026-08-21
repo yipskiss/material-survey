@@ -96,6 +96,7 @@ button.codechip{cursor:pointer}
 .missnote.show{display:block}
 .donemark{width:64px;height:64px;border-radius:50%;background:var(--ok-soft);color:var(--ok);font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
 .eyeicon{display:flex;justify-content:center;color:var(--muted)}
+.vwrap{min-height:100vh;min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding-top:24px;padding-bottom:32px}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
 td{padding:9px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
@@ -352,9 +353,9 @@ function renderPrep(){
     +'<path d="M57 32 L61 44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
     +'<path d="M71 27 L78 37" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>'
     +'</svg>';
-  app.innerHTML='<div class="wrap center" style="padding-top:64px">'+bannerHTML()
-    +'<div class="eyeicon">'+eye+'</div>'
-    +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:26px;letter-spacing:0">눈을 감은 상태로<br>진행자의 지시를 기다려 주세요</h1>'
+  app.innerHTML='<div class="wrap center vwrap">'+bannerHTML()
+    +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;letter-spacing:0">눈을 감은 상태로<br>진행자의 지시를 기다려 주세요</h1>'
+    +'<div class="eyeicon" style="margin-top:30px">'+eye+'</div>'
     +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
     +(settings.test?('<div class="toolrow" style="justify-content:center"><button class="btn ghost" data-act="tprev">◀ 이전 (←)</button>'
       +'<button class="btn ghost" data-act="tnext">다음 (→)</button>'
@@ -395,7 +396,7 @@ function renderRate(){
 
 function renderDone(){
   var pid=route.pid;
-  app.innerHTML='<div class="wrap center" style="padding-top:60px">'+bannerHTML()
+  app.innerHTML='<div class="wrap center vwrap">'+bannerHTML()
     +'<div class="card" style="padding:36px 24px">'
     +'<div class="donemark">✓</div>'
     +'<h1 style="font-size:22px">'+pid+' 세션 완료</h1>'
@@ -526,6 +527,7 @@ function payTableHTML(){
   });
   return r+'</tbody></table></div>';
 }
+var adminTableOpen=false;
 var orderShown=null;
 function renderOrderBox(op){
   orderShown=op;
@@ -543,9 +545,10 @@ function renderOrderBox(op){
     +'<div class="toolrow"><button class="btn ghost" data-act="clearchk" data-pid="'+op+'">'+op+' 체크 모두 지우기</button></div>';
 }
 function renderAdmin(){
-  var rows='';
+  var rows='',doneN=0,partN=0;
   for(var i=0;i<PIDS.length;i++){
     var pid=PIDS[i],c=countOf(pid);
+    if(c>=40)doneN++;else if(c>0)partN++;
     var lc=records[pid]||{},lastT=0,k;
     for(k in lc){if(lc[k].t>lastT)lastT=lc[k].t;}
     var tag=c>=40?'<span class="tag done">완료</span>':(c>0?'<span class="tag part">진행 중</span>':'<span class="tag">시작 전</span>');
@@ -570,7 +573,12 @@ function renderAdmin(){
     +PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')
     +'</select><button class="btn ghost" data-act="showorder">순서 보기</button></div>'
     +'<div id="orderbox"></div></div>'
-    +'<div class="card tscroll" style="margin-top:16px;padding:6px 14px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="card" style="margin-top:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
+    +'<p class="sectlab" style="margin:0">응답 현황 — 완료 '+doneN+' · 진행 중 '+partN+' · 시작 전 '+(PIDS.length-doneN-partN)+'</p>'
+    +'<button class="btn ghost" style="min-height:36px;padding:6px 14px" data-act="tbl-toggle">'+(adminTableOpen?'접기':'펼치기')+'</button></div>'
+    +(adminTableOpen?('<div class="tscroll" style="margin-top:10px"><table><thead><tr><th>피험자</th><th>상태</th><th>응답</th><th>이 기기 마지막 저장</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'):'')
+    +'</div>'
     +'<div class="card" style="margin-top:16px"><p class="sectlab">참여비 지급 정보 (이 기기에만 저장)</p>'
     +payTableHTML()
     +'<div class="toolrow"><button class="btn" data-act="pay-open">＋ 정보 입력</button>'
@@ -656,6 +664,7 @@ app.addEventListener('click',function(e){
   }
   else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
+  else if(act==='tbl-toggle'){adminTableOpen=!adminTableOpen;render();}
   else if(act==='showorder'){renderOrderBox(document.getElementById('orderpid').value);}
   else if(act==='ocell'){
     var cp=b.dataset.pid,ci=+b.dataset.idx;
