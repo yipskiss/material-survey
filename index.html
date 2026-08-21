@@ -81,9 +81,10 @@ button.codechip{cursor:pointer}
 .hint{font-size:13.5px;color:var(--muted);margin:10px 0 4px}
 .sect{margin-top:20px}
 .sectlab{font-size:12px;font-weight:500;letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
-.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 16px;margin-bottom:10px}
+.items{margin-top:14px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px 16px;margin-bottom:10px}
 .item.miss{border-color:var(--danger)}
-.poles{display:flex;justify-content:space-between;gap:12px;font-size:14.5px;font-weight:500}
+.poles{display:flex;justify-content:space-between;gap:12px;font-size:16px;font-weight:500}
 .poles .r{text-align:right}
 .dots{display:flex;justify-content:space-between;margin-top:12px;padding:0 2px}
 .dot{width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s}
@@ -336,14 +337,9 @@ function renderPrep(){
 function renderRate(){
   var pid=route.pid,idx=route.idx;
   var doneCnt=countOf(pid);
-  var rows='',lastSect='';
+  var rows='<div class="items">';
   for(var i=0;i<ITEMS.length;i++){
     var it=ITEMS[i];
-    if(it.s!==lastSect){
-      if(lastSect)rows+='</div>';
-      rows+='<div class="sect"><p class="sectlab">'+SECTIONS[it.s]+'</p>';
-      lastSect=it.s;
-    }
     var dots='';
     for(var v=1;v<=5;v++){
       dots+='<button class="dot" data-act="dot" data-item="'+i+'" data-val="'+v+'" aria-pressed="'+(draft[i]===v?'true':'false')+'">'+v+'</button>';
