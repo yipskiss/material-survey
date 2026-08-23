@@ -529,13 +529,47 @@ function itemRowsHTML(){
   return rows+'</div>';
 }
 function renderTut(){
-  app.innerHTML='<div class="wrap">'
-    +'<div class="topbar"><div class="topline"><span>연습</span><span>기록되지 않습니다</span></div>'
-    +'<div class="bar"><i style="width:0%"></i></div></div>'
-    +'<div class="banner" style="background:var(--soft);color:var(--muted)">연습 화면입니다 — 실제 실험과 똑같은 문항이며, 응답은 저장되지 않습니다.</div>'
-    +'<p class="hint">시편을 눈으로만 보고, 각 문항에 응답해 주세요.</p>'
-    +itemRowsHTML()
-    +'<div class="btnrow"><button class="btn wide" data-act="tut-done">연습 마치기</button></div>'
+  var step=route.step||0;
+  function note(t){return '<div class="banner" style="background:var(--soft);color:var(--muted)">'+t+'</div>';}
+  if(step===0){
+    app.innerHTML='<div class="wrap">'
+      +'<p class="eyebrow">연습 · 실험 절차 안내</p>'
+      +'<h1>실험은 이렇게 진행됩니다</h1>'
+      +'<div class="card" style="margin-top:16px"><ul class="guide">'
+      +'<li><b>재료 40개</b>를 하나씩 보면서, 재료마다 같은 <b>4개 문항</b>에 응답합니다.</li>'
+      +'<li>한 재료가 끝나면 <b>대기 화면</b>이 나옵니다 — 진행자가 다음 재료를 준비하는 동안 정면을 바라보며 기다려 주세요.</li>'
+      +'<li><b>20번째 재료 후에는 2분간 쉬는 시간</b>이 있습니다.</li>'
+      +'<li>지금은 연습이라 응답이 저장되지 않습니다. 화면을 차례대로 미리 볼게요.</li>'
+      +'</ul></div>'
+      +'<div class="btnrow"><button class="btn wide" data-act="tut-next" data-step="1">연습 시작 — 문항 화면 보기</button>'
+      +'<button class="btn ghost wide" data-act="tut-done">건너뛰기</button></div>'
+      +'</div>';
+    return;
+  }
+  if(step===1){
+    app.innerHTML='<div class="wrap">'
+      +'<div class="topbar"><div class="topline"><span>연습 1/3 · 문항 화면</span><span>기록되지 않습니다</span></div>'
+      +'<div class="bar"><i style="width:0%"></i></div></div>'
+      +note('실제와 똑같은 문항입니다. 시편을 눈으로만 보고 응답한다고 생각하며 자유롭게 눌러 보세요.')
+      +itemRowsHTML()
+      +'<div class="btnrow"><button class="btn wide" data-act="tut-next" data-step="2">다음 — 대기 화면 보기</button></div>'
+      +'</div>';
+    return;
+  }
+  if(step===2){
+    app.innerHTML='<div class="wrap center vwrap">'
+      +note('연습 2/3 — 한 재료의 응답이 끝나면 이 화면이 나옵니다. 진행자가 시편을 바꾸는 동안 <b>정면을 바라보며 기다리면</b> 됩니다.')
+      +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;letter-spacing:0">정면을 바라보고<br>진행자의 지시를 기다려 주세요</h1>'
+      +'<p class="sub" style="font-size:21px;margin-top:22px">다음은 <b style="color:var(--ink);font-variant-numeric:tabular-nums">2번째</b> 재료입니다</p>'
+      +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="tut-next" data-step="3">다음 — 쉬는 시간 화면 보기</button></div>'
+      +'</div>';
+    return;
+  }
+  app.innerHTML='<div class="wrap center vwrap">'
+    +note('연습 3/3 — 20번째 재료가 끝나면 2분간 쉬는 시간이 있습니다. 시간이 지나면 화면이 바뀌고, 진행자의 안내에 따라 계속합니다.')
+    +'<p class="eyebrow">쉬는 시간</p>'
+    +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>'
+    +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="tut-done">연습 마치기 — 준비 완료</button></div>'
     +'</div>';
 }
 function renderRate(){
@@ -877,7 +911,8 @@ app.addEventListener('click',function(e){
     else go({v:'start',pid:pid});
   }
   else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
-  else if(act==='tut'){draft=[];go({v:'tut',pid:route.pid});}
+  else if(act==='tut'){draft=[];go({v:'tut',pid:route.pid,step:0});}
+  else if(act==='tut-next'){go({v:'tut',pid:route.pid,step:+b.dataset.step});}
   else if(act==='tut-done'){draft=[];go({v:'start',pid:route.pid});}
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
   else if(act==='tbl-toggle'){adminTableOpen=!adminTableOpen;render();}
