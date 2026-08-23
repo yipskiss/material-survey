@@ -667,19 +667,21 @@ function showPayImportModal(){
 }
 function payCSV(mask){
   function esc(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"';}
+  // 엑셀이 앞자리 0을 지우거나 지수 표기로 바꾸지 못하게 텍스트로 강제 (전화번호·주민번호·계좌번호)
+  function esct(s){return '="'+String(s==null?'':s).replace(/"/g,'""')+'"';}
   var list=mergedPay(),lines;
   if(mask){
     // 증빙용: 제출 서류 양식 (주민번호 마스킹, 계좌정보 합침)
     lines=['연번,성명,주민번호,소속,직위,활용일시,연락처,주소,청구금액,계좌정보'];
     list.forEach(function(p,i){
       var acct=[p.bank,p.holder,p.acct].filter(Boolean).join(', ');
-      lines.push([i+1,esc(p.name),esc(maskRRN(p.rrn)),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(acct)].join(','));
+      lines.push([i+1,esc(p.name),esct(maskRRN(p.rrn)),esc(p.org),esc(p.pos),esc(p.dt),esct(p.phone),esc(p.addr),esc(p.amt),esc(acct)].join(','));
     });
   }else{
     // 수기입력용: 청구 시스템 화면의 입력 순서 그대로 (예금주 → 은행 → 계좌번호 분리)
     lines=['연번,성명,주민등록번호,소속,직위,활용일시,연락처,주소,청구금액,예금주,은행,계좌번호'];
     list.forEach(function(p,i){
-      lines.push([i+1,esc(p.name),esc(p.rrn),esc(p.org),esc(p.pos),esc(p.dt),esc(p.phone),esc(p.addr),esc(p.amt),esc(p.holder),esc(p.bank),esc(p.acct)].join(','));
+      lines.push([i+1,esc(p.name),esct(p.rrn),esc(p.org),esc(p.pos),esc(p.dt),esct(p.phone),esc(p.addr),esc(p.amt),esc(p.holder),esc(p.bank),esct(p.acct)].join(','));
     });
   }
   return '﻿'+lines.join('\r\n');
