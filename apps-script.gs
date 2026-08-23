@@ -115,6 +115,17 @@ function doPost(e) {
     if (API_KEY && data.key !== API_KEY) return json_({ ok: false, error: 'bad_key' });
     var sh = getSheet_();
 
+    // 특정 재료(시행) 하나만 삭제 — 관리자 순서표에서 사용
+    if (act === 'deltrial' && data.pid && data.trial) {
+      var tv = sh.getDataRange().getValues();
+      var tt = [];
+      for (var y = tv.length - 1; y >= 1; y--) {
+        if (String(tv[y][0]) === String(data.pid) && Number(tv[y][1]) === Number(data.trial)) tt.push(y + 1);
+      }
+      deleteRows_(sh, tt);
+      return json_({ ok: true, removed: tt.length });
+    }
+
     if (act === 'reset' && data.pid) {
       var rv = sh.getDataRange().getValues();
       var rt = [];

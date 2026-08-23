@@ -140,6 +140,7 @@ select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-r
 .ocell.odone{opacity:.4}
 .ocell.ochk{border-color:var(--accent)}
 .ocell.onext{border:2px solid var(--accent)}
+.ocell.odelarm{opacity:1;border:2px solid var(--danger)}
 .omark{position:absolute;top:3px;right:6px;color:var(--accent);font-weight:600;font-size:12px}
 .onum{position:absolute;top:3px;left:6px;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
 .ocat{font-size:11px;color:var(--muted)}
@@ -340,6 +341,19 @@ function refresh(){
         var m=serverAnswered[pid]={};
         res.answered[pid].forEach(function(tr){if(tr>=1&&tr<=40)m[tr-1]=true;});
       }
+      // 서버에서 삭제된 기록을 이 기기에도 반영:
+      // 전송이 끝났고(대기열에 없음) 서버에도 없는 로컬 기록은 관리자가 지운 것이므로 제거
+      var changed=false;
+      for(var rp in records){
+        for(var rk in records[rp]){
+          var tr2=(+rk)+1;
+          var inQ=queue.some(function(r){return r.pid===rp&&r.trial===tr2;});
+          var onSrv=serverAnswered[rp]&&serverAnswered[rp][rk];
+          if(!inQ&&!onSrv){delete records[rp][rk];changed=true;}
+        }
+        if(!Object.keys(records[rp]).length)delete records[rp];
+      }
+      if(changed)saveRecords();
       serverOk=true;render();return true;
     }
     serverOk=false;render();return false;
@@ -682,6 +696,7 @@ function payTableHTML(){
 }
 var adminTableOpen=false;
 var orderShown=null;
+var pendingDel=null,pendingDelTimer=null;
 function renderOrderBox(op){
   orderShown=op;
   var osel=document.getElementById('orderpid');
@@ -691,15 +706,22 @@ function renderOrderBox(op){
   for(var ni=0;ni<40;ni++){if(!os[ni]){nextI=ni;break;}}
   var oh='<div class="ordergrid">';
   ORDERS[op].forEach(function(m,i){
-    var isNext=(i===nextI);
-    oh+='<div class="ocell'+(os[i]?' odone':'')+(isNext?' onext':'')+'">'
-      +'<span class="onum">'+(i+1)+'</span>'
-      +'<span class="ocat">'+(m.indexOf('PL_')===0?'플라스틱':'종이')+'</span>'
-      +'<span class="mono ocode">'+m+'</span></div>';
+    var cat='<span class="ocat">'+(m.indexOf('PL_')===0?'플라스틱':'종이')+'</span>';
+    var code='<span class="mono ocode">'+m+'</span>';
+    if(os[i]){
+      var isPend=(pendingDel===op+'#'+i);
+      oh+='<button class="ocell odone'+(isPend?' odelarm':'')+'" data-act="odel" data-pid="'+op+'" data-idx="'+i+'">'
+        +'<span class="onum">'+(i+1)+'</span>'
+        +(isPend?'<span class="ocat" style="color:var(--danger)">기록 삭제?</span><span class="ocode" style="font-size:11px;color:var(--danger)">한 번 더 탭</span>':cat+code)
+        +'</button>';
+    }else{
+      oh+='<div class="ocell'+(i===nextI?' onext':'')+'">'
+        +'<span class="onum">'+(i+1)+'</span>'+cat+code+'</div>';
+    }
   });
   oh+='</div>';
   document.getElementById('orderbox').innerHTML=
-    '<p class="hint">'+op+' 제시 순서 — 흐린 칸은 응답 저장 완료, <b>테두리 강조 = 다음에 놓을 재료</b>. 정확한 실시간 기준은 태블릿 화면의 "다음은 n번째 재료입니다"이며, 이 표에서 그 번호의 시편 코드를 찾으면 됩니다.</p>'
+    '<p class="hint">'+op+' 제시 순서 — 흐린 칸은 응답 저장 완료, <b>테두리 강조 = 다음에 놓을 재료</b>. 실시간 기준은 태블릿의 "다음은 n번째 재료입니다"입니다. <b>흐린 칸을 두 번 탭하면 그 재료 기록만 삭제</b>되어 다시 평가할 수 있어요 (태블릿에서 홈 → 피험자 재선택 시 그 재료부터 재개).</p>'
     +oh;
 }
 function renderAdmin(){
@@ -830,6 +852,20 @@ app.addEventListener('click',function(e){
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
   else if(act==='tbl-toggle'){adminTableOpen=!adminTableOpen;render();}
   else if(act==='showorder'){renderOrderBox(document.getElementById('orderpid').value);}
+  else if(act==='odel'){
+    var dp=b.dataset.pid,di=+b.dataset.idx,dk=dp+'#'+di;
+    if(pendingDel!==dk){
+      pendingDel=dk;clearTimeout(pendingDelTimer);
+      pendingDelTimer=setTimeout(function(){pendingDel=null;if(route.v==='admin'&&orderShown===dp)renderOrderBox(dp);},3000);
+      renderOrderBox(dp);return;
+    }
+    pendingDel=null;clearTimeout(pendingDelTimer);
+    if(records[dp]){delete records[dp][di];if(!Object.keys(records[dp]).length)delete records[dp];saveRecords();}
+    queue=queue.filter(function(r){return !(r.pid===dp&&r.trial===di+1);});saveQueue();
+    if(serverAnswered[dp])delete serverAnswered[dp][di];
+    renderOrderBox(dp);
+    if(ENDPOINT){post({action:'deltrial',pid:dp,trial:di+1}).then(function(){refresh();},function(){serverOk=false;render();});}
+  }
   else if(act==='dot'){
     var i=+b.dataset.item,val=+b.dataset.val;
     draft[i]=val;
@@ -863,7 +899,8 @@ app.addEventListener('click',function(e){
     saveRecord(pid2,idx2,draft.slice(0,ITEMS.length));
     saveRecords();saveQueue();
     draft=[];
-    go(idx2+1>=40?{v:'done',pid:pid2}:{v:'prep',pid:pid2,idx:idx2+1});
+    var nx2=nextIdx(pid2);
+    go(nx2>=40?{v:'done',pid:pid2}:{v:'prep',pid:pid2,idx:nx2});
     flush();
   }
   else if(act==='tprev'){if(route.idx>0){setRoute({v:'prep',pid:route.pid,idx:route.idx-1});render();}}
@@ -871,7 +908,8 @@ app.addEventListener('click',function(e){
   else if(act==='trand'){
     var tp=route.pid,ti=route.idx;
     if(!answeredSet(tp)[ti]){saveRecord(tp,ti,randomDraft());saveRecords();saveQueue();flush();}
-    go(ti+1>=40?{v:'done',pid:tp}:{v:'prep',pid:tp,idx:ti+1});
+    var tn=nextIdx(tp);
+    go(tn>=40?{v:'done',pid:tp}:{v:'prep',pid:tp,idx:tn});
   }
   else if(act==='rand'){draft=randomDraft();render();}
   else if(act==='stepauto'){
