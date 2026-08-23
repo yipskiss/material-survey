@@ -216,17 +216,17 @@ function fetchPayList(){
   },function(){payFetchState='err';render();return false;});
 }
 function syncPay(){
-  if(!ENDPOINT||!adminKey)return Promise.resolve(false);
+  if(!ENDPOINT)return Promise.resolve(false);
   var pending=payInfo.filter(function(p){return !p.synced;});
   var chain=Promise.resolve();
   pending.forEach(function(p){
     chain=chain.then(function(){
-      return post({action:'addinfo',key:adminKey,info:p}).then(function(res){
+      return post({action:'addinfo',info:p}).then(function(res){
         if(res&&res.ok){p.synced=true;savePay();}
       },function(){});
     });
   });
-  return chain.then(fetchPayList);
+  return chain.then(function(){return adminKey?fetchPayList():(render(),true);});
 }
 function mergedPay(){
   if(serverPay===null)return payInfo.slice();
@@ -265,8 +265,19 @@ function itemOk(i,val){
 function saveRecord(pid,idx,ratings){
   var m=ORDERS[pid][idx],now=Date.now();
   (records[pid]=records[pid]||{})[idx]={m:m,r:ratings,t:now};
+  var rep=false;
+  try{
+    var rd=JSON.parse(localStorage.getItem('mtgh_redo_v1')||'{}');
+    if(rd[pid+'#'+idx]){rep=true;delete rd[pid+'#'+idx];localStorage.setItem('mtgh_redo_v1',JSON.stringify(rd));}
+  }catch(e){}
   queue.push({pid:pid,trial:idx+1,material:m,category:m.indexOf('PL_')===0?'plastic':'paper',
-    ratings:ratings,timestamp:new Date(now).toISOString(),client:deviceId+(settings.test?'-test':'')});
+    ratings:ratings,timestamp:new Date(now).toISOString(),client:deviceId+(settings.test?'-test':''),
+    replace:rep||undefined});
+}
+function backCtrlHTML(){
+  var bIdx=(route.v==='done')?39:route.idx-1;
+  if(bIdx<0)return '';
+  return '<p style="margin-top:12px"><button class="backlink" data-act="redo" data-idx="'+bIdx+'">↩ 이전 재료('+(bIdx+1)+'번째) 다시 평가</button></p>';
 }
 
 function answeredSet(pid){
@@ -321,7 +332,10 @@ function refresh(){
     serverOk=false;render();return false;
   },function(){serverOk=false;render();return false;});
 }
-setInterval(function(){if(queue.length)flush();},30000);
+setInterval(function(){
+  if(queue.length)flush();
+  if(payInfo.some(function(p){return !p.synced;}))syncPay();
+},30000);
 setInterval(function(){
   if(route.v!=='admin'||!ENDPOINT)return;
   if(document.activeElement&&/^(input|textarea|select)$/i.test(document.activeElement.tagName))return;
@@ -403,7 +417,8 @@ function renderStart(){
     +'<li>20번째 재료 후에는 2분간 쉬는 시간이 있습니다.</li>'
     +'<li>정답은 없습니다. 보이는 인상 그대로 응답하면 됩니다.</li>'
     +'</ul></div>'
-    +'<div class="btnrow"><button class="btn wide" data-act="begin">'+(resume?'이어서 시작':'평가 시작')+'</button></div>'
+    +'<div class="btnrow"><button class="btn wide" data-act="begin">'+(resume?'이어서 시작':'평가 시작')+'</button>'
+    +'<button class="btn ghost wide" data-act="goinfo">인적사항 입력 (참여비 지급 정보)</button></div>'
     +'</div>';
 }
 
@@ -415,16 +430,13 @@ function testToolrowHTML(){
 }
 function renderPrep(){
   if(route.idx===BREAK_AFTER){renderBreak();return;}
-  var eye='<svg width="96" height="60" viewBox="0 0 88 56" fill="none" aria-hidden="true">'
-    +'<path d="M8 28 C22 9 66 9 80 28 C66 47 22 47 8 28 Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round" fill="none"/>'
-    +'<circle cx="44" cy="28" r="8" stroke="currentColor" stroke-width="4" fill="none"/>'
-    +'</svg>';
   app.innerHTML='<div class="wrap center vwrap">'+bannerHTML()
     +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;letter-spacing:0">정면을 바라보고<br>진행자의 지시를 기다려 주세요</h1>'
-    +'<div class="eyeicon" style="margin-top:30px">'+eye+'</div>'
+    +'<p class="sub" style="font-size:17px;margin-top:20px">다음은 <b style="font-variant-numeric:tabular-nums">'+(route.idx+1)+'번째</b> 재료입니다</p>'
     +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
     +testToolrowHTML()
     +'<p style="margin-top:64px"><button class="backlink" data-act="home">세션 나가기</button></p>'
+    +backCtrlHTML()
     +'<p class="mono" style="font-size:13.5px;color:var(--muted);opacity:.8;margin-top:8px">'+route.pid+' · '+(route.idx+1)+' / 40</p>'
     +'</div>';
 }
@@ -450,6 +462,7 @@ function renderBreak(){
       :'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>')
     +testToolrowHTML()
     +'<p style="margin-top:56px"><button class="backlink" data-act="home">세션 나가기</button></p>'
+    +backCtrlHTML()
     +'<p class="mono" style="font-size:13.5px;color:var(--muted);opacity:.8;margin-top:8px">'+route.pid+' · 다음은 '+(route.idx+1)+'번째 재료</p>'
     +'</div>';
 }
@@ -499,14 +512,15 @@ function renderDone(){
     +'<p class="sub">재료 40개 평가가 모두 기록되었습니다.<br>참여해 주셔서 감사합니다.</p>'
     +'</div>'
     +'<div class="btnrow"><button class="btn wide" data-act="home">피험자 선택으로</button></div>'
+    +backCtrlHTML()
     +'</div>';
 }
 
-var infoSaved=false;
+var infoSaved=false,pendingInfoPid=null;
 function infoFormHTML(){
   var d=new Date();function z(n){return(n<10?'0':'')+n;}
   var today=d.getFullYear()+'.'+z(d.getMonth()+1)+'.'+z(d.getDate());
-  var opts='<option value="">미지정</option>'+PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+  var opts='<option value="">미지정</option>'+PIDS.map(function(p){return '<option value="'+p+'"'+(p===pendingInfoPid?' selected':'')+'>'+p+'</option>';}).join('');
   return '<p class="sectlab">본인 정보</p>'
     +'<div class="frm">'
     +'<div><label>성명 *</label><input id="pi_name"></div>'
@@ -535,12 +549,13 @@ function renderInfo(){
       +'<div class="card" style="padding:36px 24px"><div class="donemark">✓</div>'
       +'<h1 style="font-size:22px">저장되었습니다</h1>'
       +'<p class="sub">감사합니다. 진행자에게 알려주세요.</p></div>'
-      +'<div class="btnrow"><button class="btn ghost wide" data-act="info-new">다음 참가자 입력</button></div>'
+      +'<div class="btnrow">'
+      +(pendingInfoPid?('<button class="btn wide" data-act="info-back">실험 화면으로 돌아가기 ('+pendingInfoPid+')</button>'):'')
+      +'<button class="btn ghost wide" data-act="info-new">다음 참가자 입력</button></div>'
       +'</div>';
     return;
   }
   app.innerHTML='<div class="wrap">'
-    +(adminKey?'':'<div class="banner">진행자 설정 필요 — 이 기기에 관리자 키가 없어 입력 내용이 이 기기에만 보관됩니다. 관리자 화면(#admin)에서 키를 연결하면 중앙 목록으로 자동 전송됩니다.</div>')
     +'<p class="eyebrow">연구 참여 안내</p>'
     +'<h1>참여자 정보 입력</h1>'
     +'<p class="sub">연구 참여비(수당) 지급을 위해 필요한 정보입니다.</p>'
@@ -718,7 +733,7 @@ function renderAdmin(){
         +'</div>'
         +(payFetchState==='badkey'?'<p class="hint" style="color:var(--danger)">관리자 키가 올바르지 않습니다. <button class="backlink" data-act="akey-reset" style="margin:0">키 다시 입력</button></p>':'')
         +'<p class="hint">관리자 키를 입력한 기기(노트북·아이패드 등)에서는 같은 목록이 실시간 공유됩니다. 데이터는 회원님 구글 시트의 participants 탭에 저장되며, 실험 응답과 분리 보관됩니다. 수기입력용 CSV는 주민번호 전체, 증빙용은 마스킹(앞 6자리-뒷자리 첫 숫자) 형식입니다. 청구 처리 후 [전체 삭제] 권장.</p>')
-      :('<p class="hint">인적사항 목록을 보거나 다른 기기와 공유하려면 <b>관리자 키</b>를 입력하세요 (기기당 한 번). 키는 apps-script.gs의 ADMIN_KEY 값입니다.</p>'
+      :('<p class="hint">인적사항 <b>입력·전송은 키 없이</b> 어느 기기에서나 됩니다. <b>목록 열람</b>은 관리자 키를 입력한 기기에서만 가능합니다 (기기당 한 번, apps-script.gs의 ADMIN_KEY 값).</p>'
         +'<div class="toolrow" style="align-items:center"><input class="psel" id="akey_in" type="password" placeholder="관리자 키" style="min-width:200px"><button class="btn" data-act="akey-save">연결</button></div>')
     )
     +'</div>'
@@ -902,7 +917,36 @@ app.addEventListener('click',function(e){
     payInfo.push({id:newPayId(),synced:false,client:deviceId,pid:gv('pi_pid'),name:gv('pi_name'),rrn:gv('pi_rrn'),org:gv('pi_org'),pos:gv('pi_pos'),dt:gv('pi_dt'),phone:gv('pi_phone'),addr:gv('pi_addr'),amt:gv('pi_amt'),bank:gv('pi_bank'),holder:gv('pi_holder'),acct:gv('pi_acct'),agree:'Y',agreedAt:new Date().toISOString(),t:Date.now()});
     savePay();syncPay();infoSaved=true;render();window.scrollTo(0,0);
   }
-  else if(act==='info-new'){infoSaved=false;render();window.scrollTo(0,0);}
+  else if(act==='info-new'){infoSaved=false;pendingInfoPid=null;render();window.scrollTo(0,0);}
+  else if(act==='goinfo'){
+    pendingInfoPid=route.pid;infoSaved=false;
+    location.hash='#info';
+  }
+  else if(act==='info-back'){
+    var backPid=pendingInfoPid;pendingInfoPid=null;
+    if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+    go(backPid?{v:'start',pid:backPid}:{v:'home'});
+  }
+  else if(act==='redo'){
+    var bIdx2=+b.dataset.idx,rp=route.pid;
+    if(!b.classList.contains('arm')){
+      b.classList.add('arm');b.textContent='한 번 더 누르면 '+(bIdx2+1)+'번째 재료를 다시 평가합니다';
+      clearTimeout(armTimer);
+      armTimer=setTimeout(function(){b.classList.remove('arm');b.textContent='↩ 이전 재료('+(bIdx2+1)+'번째) 다시 평가';},3000);
+      return;
+    }
+    clearTimeout(armTimer);
+    if(records[rp])delete records[rp][bIdx2];
+    saveRecords();
+    queue=queue.filter(function(r){return !(r.pid===rp&&r.trial===bIdx2+1);});saveQueue();
+    if(serverAnswered[rp])delete serverAnswered[rp][bIdx2];
+    try{
+      var rd2=JSON.parse(localStorage.getItem('mtgh_redo_v1')||'{}');
+      rd2[rp+'#'+bIdx2]=true;localStorage.setItem('mtgh_redo_v1',JSON.stringify(rd2));
+    }catch(e){}
+    draft=[];
+    go({v:'prep',pid:rp,idx:bIdx2});
+  }
   else if(act==='pay-open'){showPayModal();}
   else if(act==='akey-save'){
     var akin=document.getElementById('akey_in');

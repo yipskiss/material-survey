@@ -5,7 +5,7 @@
 var SHEET_NAME = 'responses_v2';   // 실험 응답 (4문항 버전, 자동 생성)
 var PAY_SHEET = 'participants';    // 참여자 인적사항 (자동 생성)
 var API_KEY = 'hxlab-material-2026-v2';  // index.html의 APIKEY와 동일해야 함
-var ADMIN_KEY = 'hxlab-admin-2026';      // 관리자 키 — 인적사항 열람/저장용. 원하면 바꾸세요 (기기에서 입력하는 키)
+var ADMIN_KEY = 'hxlab611';      // 관리자 키 — 인적사항 열람/저장용 (각 기기의 관리자 화면에서 입력)
 
 function getSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -61,23 +61,27 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var act = data.action || '';
 
-    // ── 인적사항 (관리자 키 필요) ──
-    if (act === 'addinfo' || act === 'listinfo' || act === 'delinfo' || act === 'clearinfo') {
+    // ── 인적사항 저장: 누구나 가능 (사이트 기본 키) ──
+    if (act === 'addinfo') {
+      if (API_KEY && data.key !== API_KEY) return json_({ ok: false, error: 'bad_key' });
+      var ps0 = getPaySheet_();
+      var f = data.info || {};
+      if (!f.id || !f.name) return json_({ ok: false, error: 'missing_fields' });
+      var vals = ps0.getDataRange().getValues();
+      for (var i = 1; i < vals.length; i++) {
+        if (String(vals[i][0]) === String(f.id)) return json_({ ok: true, dup: true });
+      }
+      ps0.appendRow([f.id, f.pid || '', f.name, f.rrn || '', f.org || '', f.pos || '', f.dt || '',
+        f.phone || '', f.addr || '', f.amt || '', f.bank || '', f.holder || '', f.acct || '',
+        f.agree || '', f.agreedAt || '', f.client || '', new Date().toISOString()]);
+      return json_({ ok: true, added: 1 });
+    }
+
+    // ── 인적사항 열람·삭제 (관리자 키 필요) ──
+    if (act === 'listinfo' || act === 'delinfo' || act === 'clearinfo') {
       if (!ADMIN_KEY || data.key !== ADMIN_KEY) return json_({ ok: false, error: 'bad_admin_key' });
       var ps = getPaySheet_();
 
-      if (act === 'addinfo') {
-        var f = data.info || {};
-        if (!f.id || !f.name) return json_({ ok: false, error: 'missing_fields' });
-        var vals = ps.getDataRange().getValues();
-        for (var i = 1; i < vals.length; i++) {
-          if (String(vals[i][0]) === String(f.id)) return json_({ ok: true, dup: true });
-        }
-        ps.appendRow([f.id, f.pid || '', f.name, f.rrn || '', f.org || '', f.pos || '', f.dt || '',
-          f.phone || '', f.addr || '', f.amt || '', f.bank || '', f.holder || '', f.acct || '',
-          f.agree || '', f.agreedAt || '', f.client || '', new Date().toISOString()]);
-        return json_({ ok: true, added: 1 });
-      }
       if (act === 'listinfo') {
         var pv = ps.getDataRange().getValues();
         var list = [];
@@ -121,9 +125,20 @@ function doPost(e) {
       return json_({ ok: true, reset: data.pid, removed: rt.length });
     }
 
+    // 재평가(replace) 레코드는 기존 행을 지우고 새로 저장
+    var delKeys = {};
+    (data.records || []).forEach(function (rec) {
+      if (rec && rec.replace && rec.pid && rec.trial) delKeys[rec.pid + '#' + rec.trial] = true;
+    });
+    var allv = sh.getDataRange().getValues();
+    var delRows = [];
+    for (var dr = allv.length - 1; dr >= 1; dr--) {
+      if (delKeys[allv[dr][0] + '#' + allv[dr][1]]) delRows.push(dr + 1);
+    }
+    if (delRows.length) { deleteRows_(sh, delRows); allv = sh.getDataRange().getValues(); }
+
     // 응답 저장 (문항 4개, 중복 pid+trial은 최초 것 유지)
     var existing = {};
-    var allv = sh.getDataRange().getValues();
     for (var a = 1; a < allv.length; a++) existing[allv[a][0] + '#' + allv[a][1]] = true;
 
     var rows = [];
