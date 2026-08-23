@@ -383,7 +383,7 @@ try{var rr=JSON.parse(sessionStorage.getItem(SS_ROUTE)||'null');if(rr&&rr.v)rout
 function setRoute(r){route=r;try{sessionStorage.setItem(SS_ROUTE,JSON.stringify(r));}catch(e){}}
 function go(r){setRoute(r);render();window.scrollTo(0,0);}
 function sanitizeRoute(){
-  if((route.v==='prep'||route.v==='rate'||route.v==='start'||route.v==='done')&&!ORDERS[route.pid]){route={v:'home'};return;}
+  if((route.v==='prep'||route.v==='rate'||route.v==='start'||route.v==='done'||route.v==='tut')&&!ORDERS[route.pid]){route={v:'home'};return;}
   if(route.v==='prep'||route.v==='rate'){
     var n=nextIdx(route.pid);
     if(n>=40){route={v:'done',pid:route.pid};}
@@ -397,6 +397,8 @@ var draft=[];
 function bannerHTML(){
   if(autoRun)return '<div class="banner">자동 진행 중 — G 키 또는 [자동 진행 정지] 버튼으로 멈춥니다.</div>';
   if(settings.test)return '<div class="banner">테스트 모드 켜짐 — 실제 실험 전에 [기록 관리]에서 꺼 주세요. 테스트로 넣은 피험자는 초기화로 지울 수 있어요.</div>';
+  // 실험 진행 화면에서는 서버 관련 안내를 표시하지 않음 (전송·재시도는 뒤에서 계속 동작, 상태는 관리자 화면에서 확인)
+  if(route.v==='prep'||route.v==='rate'||route.v==='done'||route.v==='start'||route.v==='tut')return '';
   if(!ENDPOINT)return '<div class="banner">구글 시트 연결 전 — index.html 상단의 ENDPOINT에 Apps Script 웹 앱 URL을 넣어야 서버 저장이 됩니다. 지금은 이 기기에만 저장돼요.</div>';
   if(queue.length)return '<div class="banner">서버 전송 대기 '+queue.length+'건 — 응답은 이 기기에 보관 중이고, 연결되면 자동으로 전송됩니다.</div>';
   if(serverOk===false)return '<div class="banner">구글 시트 연결 확인 실패 — 인터넷/배포 설정을 확인하세요. 응답은 이 기기에 저장되고 있습니다.</div>';
@@ -411,6 +413,7 @@ function render(){
   else if(v==='done')renderDone();
   else if(v==='admin')renderAdmin();
   else if(v==='info')renderInfo();
+  else if(v==='tut')renderTut();
   else renderHome();
 }
 
@@ -429,6 +432,7 @@ function renderHome(){
     +'<p class="sub">재활용 플라스틱 20종 · 종이 20종 — 피험자를 선택하면 지정된 순서로 평가가 진행됩니다.</p>'
     +'<div class="stats"><span>완료 <b>'+doneN+'</b>명</span><span>진행 중 <b>'+partN+'</b>명</span><span>누적 응답 <b>'+totalCount()+'</b> / '+TOTAL+'</span></div>'
     +'<div class="pgrid">'+cells+'</div>'
+    +'<div class="foot"><button class="btn ghost" data-act="goinfo">인적사항만 따로 입력</button></div>'
     +'</div>';
 }
 
@@ -452,6 +456,7 @@ function renderStart(){
     +'</ul></div>'
     +'<div class="btnrow"><button class="btn wide" data-act="goinfo">1. 인적사항 입력 (참여비 지급 정보)</button>'
     +'<button class="btn wide" data-act="begin">2. '+(resume?'이어서 시작':'평가 시작')+'</button></div>'
+    +'<p class="center" style="margin-top:16px"><button class="backlink" data-act="tut">설문 미리 연습해보기 (기록되지 않음)</button></p>'
     +'</div>';
 }
 
@@ -502,9 +507,7 @@ function renderBreak(){
     +'</div>';
 }
 
-function renderRate(){
-  var pid=route.pid,idx=route.idx;
-  var doneCnt=countOf(pid);
+function itemRowsHTML(){
   var rows='<div class="items">';
   for(var i=0;i<ITEMS.length;i++){
     var it=ITEMS[i],body='';
@@ -523,7 +526,22 @@ function renderRate(){
     }
     rows+='<div class="item" data-row="'+i+'"><p class="q">'+it.q+'</p>'+body+'</div>';
   }
-  rows+='</div>';
+  return rows+'</div>';
+}
+function renderTut(){
+  app.innerHTML='<div class="wrap">'
+    +'<div class="topbar"><div class="topline"><span>연습</span><span>기록되지 않습니다</span></div>'
+    +'<div class="bar"><i style="width:0%"></i></div></div>'
+    +'<div class="banner" style="background:var(--soft);color:var(--muted)">연습 화면입니다 — 실제 실험과 똑같은 문항이며, 응답은 저장되지 않습니다.</div>'
+    +'<p class="hint">시편을 눈으로만 보고, 각 문항에 응답해 주세요.</p>'
+    +itemRowsHTML()
+    +'<div class="btnrow"><button class="btn wide" data-act="tut-done">연습 마치기</button></div>'
+    +'</div>';
+}
+function renderRate(){
+  var pid=route.pid,idx=route.idx;
+  var doneCnt=countOf(pid);
+  var rows=itemRowsHTML();
   var last=idx>=39;
   app.innerHTML='<div class="wrap">'
     +'<div class="topbar"><div class="topline"><span class="mono">'+pid+'</span><span>재료 <b>'+(idx+1)+'</b> / 40</span></div>'
@@ -547,7 +565,8 @@ function renderDone(){
     +'<h1 style="font-size:22px">'+pid+' 세션 완료</h1>'
     +'<p class="sub">재료 40개 평가가 모두 기록되었습니다.<br>참여해 주셔서 감사합니다.</p>'
     +'</div>'
-    +'<div class="btnrow"><button class="btn wide" data-act="home">피험자 선택으로</button></div>'
+    +'<div class="btnrow"><button class="btn wide" data-act="home">피험자 선택으로</button>'
+    +'<button class="btn ghost wide" data-act="goinfo">이 피험자 인적사항 입력</button></div>'
     +backCtrlHTML()
     +'</div>';
 }
@@ -858,6 +877,8 @@ app.addEventListener('click',function(e){
     else go({v:'start',pid:pid});
   }
   else if(act==='begin'){draft=[];go({v:'prep',pid:route.pid,idx:nextIdx(route.pid)});}
+  else if(act==='tut'){draft=[];go({v:'tut',pid:route.pid});}
+  else if(act==='tut-done'){draft=[];go({v:'start',pid:route.pid});}
   else if(act==='rate'){draft=[];go({v:'rate',pid:route.pid,idx:route.idx});}
   else if(act==='tbl-toggle'){adminTableOpen=!adminTableOpen;render();}
   else if(act==='showorder'){renderOrderBox(document.getElementById('orderpid').value);}
