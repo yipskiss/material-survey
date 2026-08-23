@@ -95,6 +95,8 @@ body.big-dots .dots7 .dot{width:48px;height:48px;font-size:14px}
 .choicerow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .choice{flex:1;min-width:88px;border:1.5px solid var(--line);border-radius:10px;padding:13px 10px;font-size:15.5px;color:var(--muted);text-align:center}
 .choice[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-on);font-weight:600}
+.etcin{width:100%;margin-top:12px;font:inherit;font-size:15px;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.etcin::placeholder{color:var(--muted);opacity:.7}
 .breaktime{font-family:'IBM Plex Mono',monospace;font-size:52px;font-weight:600;font-variant-numeric:tabular-nums;margin-top:22px}
 .dots{display:flex;justify-content:center;margin-top:14px}
 .dotrow{position:relative;display:flex;flex:1 1 auto;max-width:400px;justify-content:space-between}
@@ -512,7 +514,8 @@ function renderRate(){
     }else{
       body='<div class="choicerow">'+it.opts.map(function(o){
         return '<button class="choice" data-act="choice" data-item="'+i+'" data-val="'+o+'" aria-pressed="'+(draft[i]===o?'true':'false')+'">'+o+'</button>';
-      }).join('')+'</div>';
+      }).join('')+'</div>'
+      +'<input class="etcin" id="etc'+i+'" maxlength="60" placeholder="어떤 재료라고 생각하시는지 적어주세요 (선택)"'+(draft[i]==='기타'?'':' hidden')+'>';
     }
     rows+='<div class="item" data-row="'+i+'"><p class="q">'+it.q+'</p>'+body+'</div>';
   }
@@ -883,6 +886,11 @@ app.addEventListener('click',function(e){
     chRow.classList.remove('miss');
     var chBs=chRow.querySelectorAll('.choice');
     for(var chK=0;chK<chBs.length;chK++)chBs[chK].setAttribute('aria-pressed',chBs[chK]===b?'true':'false');
+    var etcEl=document.getElementById('etc'+chI);
+    if(etcEl){
+      etcEl.hidden=(b.dataset.val!=='기타');
+      if(!etcEl.hidden)etcEl.focus();
+    }
   }
   else if(act==='next'){
     var missing=-1;
@@ -898,7 +906,14 @@ app.addEventListener('click',function(e){
       return;
     }
     var pid2=route.pid,idx2=route.idx;
-    saveRecord(pid2,idx2,draft.slice(0,ITEMS.length));
+    var out=draft.slice(0,ITEMS.length);
+    for(var oi=0;oi<ITEMS.length;oi++){
+      if(ITEMS[oi].t==='choice'&&out[oi]==='기타'){
+        var et=document.getElementById('etc'+oi);
+        if(et&&et.value.trim())out[oi]='기타('+et.value.trim().replace(/[\r\n,]+/g,' ')+')';
+      }
+    }
+    saveRecord(pid2,idx2,out);
     saveRecords();saveQueue();
     draft=[];
     var nx2=nextIdx(pid2);
