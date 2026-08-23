@@ -139,6 +139,8 @@ select.psel{font:inherit;padding:10px 12px;border:1px solid var(--line);border-r
 .ocell{border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:13px;display:flex;gap:7px;align-items:baseline;background:var(--surface);text-align:left;width:100%}
 .ocell.odone{opacity:.4}
 .ocell.ochk{border-color:var(--accent)}
+.ocell.onext{border:2px solid var(--accent);font-weight:600}
+.onextlab{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--accent-on);background:var(--accent);border-radius:999px;padding:1px 7px}
 .omark{color:var(--accent);font-weight:600;margin-left:auto}
 .onum{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;min-width:16px}
 </style>
@@ -325,7 +327,7 @@ setInterval(function(){
   if(document.activeElement&&/^(input|textarea|select)$/i.test(document.activeElement.tagName))return;
   refresh();
   if(adminKey&&payFetchState!=='loading')fetchPayList();
-},15000);
+},8000);
 window.addEventListener('online',function(){if(queue.length)flush();});
 
 // ─── 라우팅 ───
@@ -423,7 +425,7 @@ function renderPrep(){
     +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
     +testToolrowHTML()
     +'<p style="margin-top:64px"><button class="backlink" data-act="home">세션 나가기</button></p>'
-    +'<p class="mono" style="font-size:11px;color:var(--muted);opacity:.55;margin-top:8px">'+route.pid+' · '+(route.idx+1)+' / 40</p>'
+    +'<p class="mono" style="font-size:13.5px;color:var(--muted);opacity:.8;margin-top:8px">'+route.pid+' · '+(route.idx+1)+' / 40</p>'
     +'</div>';
 }
 var breakState=null;
@@ -435,10 +437,8 @@ function renderBreak(){
     var st={key:key,endsAt:Date.now()+120000,done:false,timer:null};
     st.timer=setInterval(function(){
       if(route.v!=='prep'||route.pid+'#'+route.idx!==key){clearInterval(st.timer);return;}
-      var left=st.endsAt-Date.now();
-      if(left<=0){clearInterval(st.timer);st.done=true;render();return;}
-      var el=document.getElementById('breaktime');if(el)el.textContent=fmtMMSS(left);
-    },250);
+      if(st.endsAt-Date.now()<=0){clearInterval(st.timer);st.done=true;render();}
+    },1000);
     breakState=st;
   }
   var over=breakState.done||(breakState.endsAt-Date.now())<=0||settings.test;
@@ -447,11 +447,10 @@ function renderBreak(){
     +(over
       ?('<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">쉬는 시간이 끝났습니다<br>진행자에게 말씀해 주세요</h1>'
         +'<div class="btnrow" style="margin-top:48px"><button class="btn wide" data-act="rate">평가 시작</button></div>')
-      :('<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>'
-        +'<p class="breaktime" id="breaktime">'+fmtMMSS(breakState.endsAt-Date.now())+'</p>'))
+      :'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>')
     +testToolrowHTML()
     +'<p style="margin-top:56px"><button class="backlink" data-act="home">세션 나가기</button></p>'
-    +'<p class="mono" style="font-size:11px;color:var(--muted);opacity:.55;margin-top:8px">'+route.pid+' · 다음은 '+(route.idx+1)+'번째 재료</p>'
+    +'<p class="mono" style="font-size:13.5px;color:var(--muted);opacity:.8;margin-top:8px">'+route.pid+' · 다음은 '+(route.idx+1)+'번째 재료</p>'
     +'</div>';
 }
 
@@ -657,14 +656,19 @@ function renderOrderBox(op){
   orderShown=op;
   var osel=document.getElementById('orderpid');
   if(osel)osel.value=op;
-  var os=answeredSet(op),ck=checks[op]||{},oh='<div class="ordergrid">';
+  var os=answeredSet(op),ck=checks[op]||{};
+  var nextI=-1;
+  for(var ni=0;ni<40;ni++){if(!os[ni]&&!ck[ni]){nextI=ni;break;}}
+  var oh='<div class="ordergrid">';
   ORDERS[op].forEach(function(m,i){
-    oh+='<button class="ocell'+(os[i]?' odone':'')+(ck[i]?' ochk':'')+'" data-act="ocell" data-pid="'+op+'" data-idx="'+i+'">'
-      +'<span class="onum">'+(i+1)+'</span><span class="mono">'+m+'</span>'+(ck[i]?'<span class="omark">✓</span>':'')+'</button>';
+    var isNext=(i===nextI);
+    oh+='<button class="ocell'+(os[i]?' odone':'')+(ck[i]?' ochk':'')+(isNext?' onext':'')+'" data-act="ocell" data-pid="'+op+'" data-idx="'+i+'">'
+      +'<span class="onum">'+(i+1)+'</span><span class="mono">'+m+'</span>'
+      +(ck[i]?'<span class="omark">✓</span>':(isNext?'<span class="onextlab">다음</span>':''))+'</button>';
   });
   oh+='</div>';
   document.getElementById('orderbox').innerHTML=
-    '<p class="hint">'+op+' 제시 순서 — 흐린 항목은 응답이 저장된 재료, 칸을 탭하면 진행자 체크(✓)를 켜고 끌 수 있어요 (이 기기에만 저장되는 메모, 실험 데이터와 무관).</p>'
+    '<p class="hint">'+op+' 제시 순서 — <b>테두리 강조 = 다음에 놓을 재료</b> (✓ 체크와 저장된 응답 기준). 시편을 놓을 때마다 칸을 탭해 ✓ 체크하면, 인터넷이 느려도 항상 정확하게 다음 재료를 가리킵니다. 흐린 항목은 응답 저장 완료.</p>'
     +oh
     +'<div class="toolrow"><button class="btn ghost" data-act="clearchk" data-pid="'+op+'">'+op+' 체크 모두 지우기</button></div>';
 }
@@ -692,7 +696,7 @@ function renderAdmin(){
     +'<button class="btn ghost" data-act="refresh">새로고침</button>'
     +'<button class="btn ghost" data-act="retry">대기분 전송'+(queue.length?(' ('+queue.length+')'):'')+'</button>'
     +'<button class="btn ghost" data-act="csv">CSV (이 기기 기록)</button></div></div>'
-    +'<div class="card"><p class="sectlab">제시 순서표 (진행자용 · 15초마다 자동 갱신)</p>'
+    +'<div class="card"><p class="sectlab">제시 순서표 (진행자용 · 자동 갱신)</p>'
     +'<div class="toolrow" style="align-items:center;margin-top:4px"><select class="psel" id="orderpid">'
     +PIDS.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('')
     +'</select><button class="btn ghost" data-act="showorder">순서 보기</button></div>'
