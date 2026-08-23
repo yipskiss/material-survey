@@ -239,19 +239,14 @@ function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/<
 function dtRowHTML(prefix){
   var d=new Date();function z(n){return(n<10?'0':'')+n;}
   var iso=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
-  return '<div class="full"><label>활용일시</label>'
-    +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-    +'<input type="date" id="'+prefix+'_dt_d" value="'+iso+'" style="flex:1;min-width:140px">'
-    +'<input type="time" id="'+prefix+'_dt_s" style="width:120px">'
-    +'<span style="color:var(--muted)">~</span>'
-    +'<input type="time" id="'+prefix+'_dt_e" style="width:120px">'
-    +'</div></div>';
+  return '<div><label>활용일자</label>'
+    +'<input type="date" id="'+prefix+'_dt_d" value="'+iso+'">'
+    +'</div>';
 }
 function composeDt(prefix){
-  function gv(id){var el=document.getElementById(id);return el?el.value:'';}
-  var dv=gv(prefix+'_dt_d');
-  var ds=dv?dv.split('-').join('.'):'';
-  return ds+' ('+(gv(prefix+'_dt_s')||'00:00')+'~'+(gv(prefix+'_dt_e')||'00:00')+')';
+  var el=document.getElementById(prefix+'_dt_d');
+  var dv=el?el.value:'';
+  return dv?dv.split('-').join('.'):'';
 }
 function maskRRN(s){
   var d=String(s==null?'':s).replace(/[^0-9]/g,'');
@@ -450,7 +445,7 @@ function renderPrep(){
   if(route.idx===BREAK_AFTER){renderBreak();return;}
   app.innerHTML='<div class="wrap center vwrap">'+bannerHTML()
     +'<h1 style="font-size:25px;font-weight:600;line-height:1.55;letter-spacing:0">정면을 바라보고<br>진행자의 지시를 기다려 주세요</h1>'
-    +'<p style="font-size:22px;font-weight:600;margin-top:22px;color:var(--ink)">다음은 <span style="font-variant-numeric:tabular-nums">'+(route.idx+1)+'번째</span> 재료입니다</p>'
+    +'<p class="sub" style="font-size:21px;margin-top:22px">다음은 <b style="color:var(--ink);font-variant-numeric:tabular-nums">'+(route.idx+1)+'번째</b> 재료입니다</p>'
     +'<div class="btnrow" style="margin-top:52px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
     +testToolrowHTML()
     +'<p style="margin-top:64px"><button class="backlink" data-act="home">세션 나가기</button></p>'
@@ -471,13 +466,15 @@ function renderBreak(){
     },1000);
     breakState=st;
   }
-  var over=breakState.done||(breakState.endsAt-Date.now())<=0||settings.test;
+  var elapsed=breakState.done||(breakState.endsAt-Date.now())<=0;
   app.innerHTML='<div class="wrap center vwrap">'+bannerHTML()
     +'<p class="eyebrow">쉬는 시간</p>'
-    +(over
+    +(elapsed
       ?('<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">쉬는 시간이 끝났습니다<br>진행자에게 말씀해 주세요</h1>'
         +'<div class="btnrow" style="margin-top:48px"><button class="btn wide" data-act="rate">평가 시작</button></div>')
-      :'<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>')
+      :('<h1 style="font-size:25px;font-weight:600;line-height:1.55;margin-top:14px">2분간 쉬는 시간입니다<br>정면을 편하게 바라보며 쉬어 주세요</h1>'
+        +(settings.test?('<div class="btnrow" style="margin-top:48px"><button class="btn wide" data-act="rate">평가 시작</button></div>'
+          +'<p class="hint">테스트 모드: 2분 대기를 생략하고 바로 시작할 수 있습니다</p>'):'')))
     +testToolrowHTML()
     +'<p style="margin-top:56px"><button class="backlink" data-act="home">세션 나가기</button></p>'
     +backCtrlHTML()
@@ -557,7 +554,7 @@ function infoFormHTML(){
     +'<p class="sectlab" style="margin-top:18px">진행자 기재란</p>'
     +'<div class="frm">'
     +'<div><label>피험자 번호</label><select id="pi_pid">'+opts+'</select></div>'
-    +'<div><label>청구금액</label><input id="pi_amt" value="7000"></div>'
+    +'<div><label>청구금액</label><input id="pi_amt" value="10000"></div>'
     +dtRowHTML('pi')
     +'</div>';
 }
@@ -621,7 +618,7 @@ function showPayModal(){
     +'<p class="sectlab" style="margin-top:16px">진행자 기재란</p>'
     +'<div class="frm">'
     +'<div><label>피험자 번호</label><select id="pp_pid">'+opts+'</select></div>'
-    +'<div><label>청구금액</label><input id="pp_amt" value="7000"></div>'
+    +'<div><label>청구금액</label><input id="pp_amt" value="10000"></div>'
     +dtRowHTML('pp')
     +'</div><p class="hint" data-msg="1"></p>'
     +'<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" data-close="1">닫기</button><button class="btn" data-save="1">저장</button></div></div>';
